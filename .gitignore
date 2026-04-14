@@ -1,0 +1,23 @@
+# --- 기본 제외 항목 (임시/빌드 파일) ---
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+/Build/
+
+.idea/
+.vs/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+
+# --- Perforce 관련 (P4 작업 파일 제외) ---
+*.p4ignore
+*.p4config
+
+# --- 에셋 제외 (소스만 올릴 경우) ---
+# Content 폴더 전체를 제외하여 용량을 줄입니다.
+/Content/
