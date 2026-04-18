@@ -16,7 +16,11 @@ class AETHER_API AAetherPlayerController : public APlayerController
 	GENERATED_BODY()
 	
 public:
-	virtual auto BeginPlay() -> void override;
+	virtual void BeginPlay() override;
+	virtual void AcknowledgePossession(class APawn* P) override;
+	virtual void PostProcessInput(const float DeltaTime, const bool bGamePaused) override;
+	
+	
 	
 private:
 	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
