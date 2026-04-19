@@ -3,4 +3,5 @@
 #include "Aether.h"
 #include "Modules/ModuleManager.h"
 
-IMPLEMENT_PRIMARY_GAME_MODULE( FDefaultGameModuleImpl, Aether, "Aether" );
+IMPLEMENT_PRIMARY_GAME_MODULE(FDefaultGameModuleImpl, Aether, "Aether");
+DEFINE_LOG_CATEGORY(LogAether);

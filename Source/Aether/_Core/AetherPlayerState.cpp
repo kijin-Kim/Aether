@@ -1,23 +1,69 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "AetherPlayerState.h"
 
-#include "AetherAbilitySystemComponent.h"
-#include "AetherAttributeSet.h"
+#include "AetherCharacter.h"
+#include "GameFramework/PlayerController.h"
+#include "Engine/World.h"
 
-AAetherPlayerState::AAetherPlayerState()
+
+void AAetherPlayerState::AuthInitializeParty(AAetherCharacter* CurrentCharacter)
 {
-	AetherASC = CreateDefaultSubobject<UAetherAbilitySystemComponent>("AbilitySystemComponent");
-	AetherASC->SetIsReplicated(true);
-	AetherASC->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
+	check(HasAuthority());
 	
-	AttributeSet = CreateDefaultSubobject<UAetherAttributeSet>("AttributeSet");
+	if (PartyCharacters.Num() > 0)
+	{
+		return;
+	}
 	
-	SetNetUpdateFrequency(30.0f);
+	PartyCharacters.SetNum(4);
+	PartyCharacters[0] = CurrentCharacter;
+	for (int32 i = 1; i < 4; ++i)
+	{
+		FTransform SpawnTransform = CurrentCharacter->GetActorTransform();
+		AAetherCharacter* NewCharacter = GetWorld()->SpawnActor<AAetherCharacter>(CurrentCharacter->GetClass(), SpawnTransform);
+		if (NewCharacter)
+		{
+			PartyCharacters[i] = NewCharacter;
+		}
+	}
+
+	for (AAetherCharacter* Character : PartyCharacters)
+	{
+		if (Character)
+		{
+			Character->SetOnField(false);
+		}
+	}
+
+	ActiveSlotIndex = 0;
 }
 
-UAbilitySystemComponent* AAetherPlayerState::GetAbilitySystemComponent() const
+void AAetherPlayerState::AuthSwitchPartySlot(int32 SlotIndex)
 {
-	 return AetherASC;
+	check(HasAuthority());
+	if (SlotIndex <= INDEX_NONE || SlotIndex >= PartyCharacters.Num())
+	{
+		return;
+	}
+
+	if (SlotIndex == ActiveSlotIndex)
+	{
+		return;
+	}
+
+	APlayerController* PC = GetPlayerController();
+	if (!PC)
+	{
+		return;
+	}
+
+	
+	if (PartyCharacters.IsValidIndex(SlotIndex) && PartyCharacters[SlotIndex])
+	{
+		PC->Possess(PartyCharacters[SlotIndex]);
+		if (AAetherCharacter* OldCharacter = ActiveSlotIndex != INDEX_NONE ? PartyCharacters[ActiveSlotIndex] : nullptr)
+		{
+			PartyCharacters[SlotIndex]->SetActorTransform(OldCharacter->GetActorTransform());	
+		}
+		ActiveSlotIndex = SlotIndex;
+	}
 }

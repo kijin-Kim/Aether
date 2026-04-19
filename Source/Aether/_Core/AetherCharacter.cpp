@@ -5,22 +5,28 @@
 
 #include "AbilitySystemComponent.h"
 #include "AetherAbilitySet.h"
-#include "AetherAbilitySystemComponent.h"
+#include "AetherAttributeSet.h"
 #include "AetherGameplayTags.h"
 #include "AetherInputComponent.h"
-#include "AetherPlayerState.h"
 #include "EnhancedInputComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Net/UnrealNetwork.h"
 
 
 AAetherCharacter::AAetherCharacter()
 {
-	PrimaryActorTick.bCanEverTick = false;
-	bUseControllerRotationYaw = false;
+	PrimaryActorTick.bCanEverTick = true;
+	bReplicates = true;
 
+	AetherASC = CreateDefaultSubobject<UAetherAbilitySystemComponent>("AetherASC");
+	AetherASC->SetIsReplicated(true);
+	AetherASC->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
+	AetherAttributeSet = CreateDefaultSubobject<UAetherAttributeSet>("AetherAttributeSet");
+
+	bUseControllerRotationYaw = false;
 
 	GetCapsuleComponent()->SetCapsuleHalfHeight(90.0f);
 	GetCapsuleComponent()->SetCapsuleRadius(35.0f);
@@ -40,6 +46,12 @@ AAetherCharacter::AAetherCharacter()
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 }
 
+void AAetherCharacter::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AAetherCharacter, bOnField);
+}
+
 void AAetherCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -56,44 +68,52 @@ void AAetherCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
+	SetOnField(true);
+	AetherASC->InitAbilityActorInfo(this, this);
 	if (ensure(AbilitySet))
 	{
-		if (AAetherPlayerState* AetherPS = GetPlayerState<AAetherPlayerState>())
-		{
-			AbilitySet->InitializeAbilitySystem(AetherPS->GetAetherAbilitySystemComponent(), nullptr);
-		}
+		AbilitySet->InitializeAbilitySystem(AetherASC, GrantedAbilitySetHandles, nullptr);
 	}
 }
 
-UAbilitySystemComponent* AAetherCharacter::GetAbilitySystemComponent() const
+void AAetherCharacter::UnPossessed()
 {
-	if (AAetherPlayerState* AetherPS = GetPlayerState<AAetherPlayerState>())
+	Super::UnPossessed();
+	SetOnField(false);
+	AetherASC->ClearInputs();
+	GrantedAbilitySetHandles.ClearAbilitySystem(AetherASC);
+}
+
+void AAetherCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	AetherASC->InitAbilityActorInfo(this, this);
+}
+
+void AAetherCharacter::SetOnField(bool bSetOnField)
+{
+	bOnField = bSetOnField;
+	// TODO: 다른 것들도 꺼서 최적화
+	//SetActorHiddenInGame(!bOnField);
+	SetActorTickEnabled(bOnField);
+	SetActorEnableCollision(bOnField);
+
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
 	{
-		return AetherPS->GetAbilitySystemComponent();
+		MeshComp->SetComponentTickEnabled(bOnField);
+		MeshComp->bPauseAnims = !bOnField;
+		MeshComp->bNoSkeletonUpdate = !bOnField;
 	}
-	return nullptr;
 }
 
 void AAetherCharacter::AbilityInputPressed(FGameplayTag InputTag)
 {
-	if (AAetherPlayerState* AetherPS = GetPlayerState<AAetherPlayerState>())
-	{
-		if (UAetherAbilitySystemComponent* AetherASC = Cast<UAetherAbilitySystemComponent>(AetherPS->GetAbilitySystemComponent()))
-		{
-			AetherASC->AbilityInputPressed(InputTag);
-		}
-	}
+	AetherASC->AbilityInputPressed(InputTag);
 }
 
 void AAetherCharacter::AbilityInputReleased(FGameplayTag InputTag)
 {
-	if (AAetherPlayerState* AetherPS = GetPlayerState<AAetherPlayerState>())
-	{
-		if (UAetherAbilitySystemComponent* AetherASC = Cast<UAetherAbilitySystemComponent>(AetherPS->GetAbilitySystemComponent()))
-		{
-			AetherASC->AbilityInputReleased(InputTag);
-		}
-	}
+	AetherASC->AbilityInputReleased(InputTag);
 }
 
 void AAetherCharacter::Move(const FInputActionValue& InputActionValue)
@@ -113,4 +133,9 @@ void AAetherCharacter::Look(const FInputActionValue& InputActionValue)
 	FVector2D InputVector = InputActionValue.Get<FVector2D>();
 	AddControllerPitchInput(InputVector.Y);
 	AddControllerYawInput(InputVector.X);
+}
+
+void AAetherCharacter::OnRep_OnField()
+{
+	SetOnField(bOnField);
 }

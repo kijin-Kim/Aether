@@ -1,32 +1,30 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
+// AetherPlayerState.h
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AbilitySystemInterface.h"
 #include "GameFramework/PlayerState.h"
+
 #include "AetherPlayerState.generated.h"
 
-class UAetherAbilitySystemComponent;
-class UAttributeSet;
+
+class AAetherCharacter;
 /**
- * 
+ *
+ *
  */
 UCLASS()
-class AETHER_API AAetherPlayerState : public APlayerState, public IAbilitySystemInterface
+class AETHER_API AAetherPlayerState : public APlayerState
 {
-	GENERATED_BODY()
-	
+    GENERATED_BODY()
+    
 public:
-	AAetherPlayerState();
-	UFUNCTION(BlueprintCallable, Category = "Aether|PlayerState")
-	UAetherAbilitySystemComponent* GetAetherAbilitySystemComponent() const { return AetherASC; }
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-	
-	
+    void AuthInitializeParty(AAetherCharacter* CurrentCharacter);
+    void AuthSwitchPartySlot(int32 SlotIndex);
+    
+
 private:
-	UPROPERTY()
-	TObjectPtr<UAetherAbilitySystemComponent> AetherASC;
-	UPROPERTY()
-	TObjectPtr<UAttributeSet> AttributeSet;
+    UPROPERTY()
+    TArray<TObjectPtr<AAetherCharacter>> PartyCharacters;
+    UPROPERTY()
+    int32 ActiveSlotIndex = INDEX_NONE;
 };

@@ -14,6 +14,8 @@ class AETHER_API UAetherAbilitySystemComponent : public UAbilitySystemComponent
 
 public:
 	void ProcessInputs();
+	void ClearInputs();
+	virtual void InitAbilityActorInfo(AActor* InOwnerActor, AActor* InAvatarActor) override;
 	void AbilityInputPressed(const FGameplayTag& InputTag);
 	void AbilityInputReleased(const FGameplayTag& InputTag);
 	

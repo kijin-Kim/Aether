@@ -7,17 +7,49 @@
 #include "AetherGameplayAbility.h"
 #include "GameplayAbilitySpec.h"
 
+void FAetherAbilitySet_GrantedHandles::ClearAbilitySystem(UAetherAbilitySystemComponent* AetherASC)
+{
+	for (const FGameplayAbilitySpecHandle& Handle : AbilitySpecHandles)
+	{
+		if (Handle.IsValid())
+		{
+			AetherASC->ClearAbility(Handle);
+		}
+	}
+
+	AbilitySpecHandles.Reset();
+
+	for (const FActiveGameplayEffectHandle& Handle : EffectSpecHandles)
+	{
+		if (Handle.IsValid())
+		{
+			AetherASC->RemoveActiveGameplayEffect(Handle);
+		}
+	}
+
+	EffectSpecHandles.Reset();
+}
+
 FAetherAbilitySet_GameplayAbility::FAetherAbilitySet_GameplayAbility()
 	: Level(1)
 {
 }
 
-void UAetherAbilitySet::InitializeAbilitySystem(UAetherAbilitySystemComponent* AetherASC, UObject* SourceObject) const
+void UAetherAbilitySet::InitializeAbilitySystem(UAetherAbilitySystemComponent* AetherASC, FAetherAbilitySet_GrantedHandles& OutGrantedHandles, UObject* SourceObject) const
 {
 	for (const FAetherAbilitySet_GameplayAbility& Ability : Abilities)
 	{
 		FGameplayAbilitySpec AbilitySpec(Ability.Ability, Ability.Level, INDEX_NONE, SourceObject);
 		AbilitySpec.GetDynamicSpecSourceTags().AddTag(Ability.InputTag);
-		AetherASC->GiveAbility(AbilitySpec);
+		OutGrantedHandles.AbilitySpecHandles.AddUnique(AetherASC->GiveAbility(AbilitySpec));
+	}
+
+	for (const FAetherAbilitySet_GameplayEffect& Effect : Effects)
+	{
+		if (Effect.Effect)
+		{
+			const FActiveGameplayEffectHandle EffectHandle = AetherASC->ApplyGameplayEffectToSelf(Effect.Effect->GetDefaultObject<UGameplayEffect>(), Effect.Level, AetherASC->MakeEffectContext());
+			OutGrantedHandles.EffectSpecHandles.AddUnique(EffectHandle);
+		}
 	}
 }

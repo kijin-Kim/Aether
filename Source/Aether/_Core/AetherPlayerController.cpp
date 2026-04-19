@@ -5,6 +5,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "AetherAbilitySystemComponent.h"
+#include "AetherCharacter.h"
 #include "AetherPlayerState.h"
 #include "EnhancedInputSubsystems.h"
 #include "GameFramework/PlayerState.h"
@@ -20,28 +21,22 @@ void AAetherPlayerController::BeginPlay()
 	}
 }
 
-void AAetherPlayerController::AcknowledgePossession(class APawn* P)
-{
-	Super::AcknowledgePossession(P);
-	APlayerState* PS = GetPlayerState<APlayerState>();
-	if (!PS)
-	{
-		return;
-	}
-	if (UAbilitySystemComponent* ASC = PS->GetComponentByClass<UAbilitySystemComponent>())
-	{
-		ASC->InitAbilityActorInfo(PS, this);
-	}
-}
 
 void AAetherPlayerController::PostProcessInput(const float DeltaTime, const bool bGamePaused)
 {
 	Super::PostProcessInput(DeltaTime, bGamePaused);
-	if (AAetherPlayerState* AetherPS = GetPlayerState<AAetherPlayerState>())
+	if (AAetherCharacter* AetherCharacter = GetPawn<AAetherCharacter>())
 	{
-		if (UAetherAbilitySystemComponent* AetherASC = AetherPS->GetAetherAbilitySystemComponent())
+		if (UAetherAbilitySystemComponent* AetherASC = AetherCharacter->GetAetherAbilitySystemComponent())
 		{
 			AetherASC->ProcessInputs();
-		}
+		}	
 	}
+}
+
+void AAetherPlayerController::OnPossess(APawn* InPawn)
+{
+	AAetherPlayerState* AetherPS = GetPlayerState<AAetherPlayerState>();
+	AetherPS->AuthInitializeParty(CastChecked<AAetherCharacter>(InPawn));
+	Super::OnPossess(InPawn);
 }

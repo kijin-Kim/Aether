@@ -62,10 +62,22 @@ void UAetherAbilitySystemComponent::ProcessInputs()
 		}
 	}
 
+	ClearInputs();
+}
+
+void UAetherAbilitySystemComponent::ClearInputs()
+{
 	InputPressedSpecHandles.Reset();
 	InputRepeatSpecHandle.Reset();
 	InputReleasedSpecHandles.Reset();
 }
+
+void UAetherAbilitySystemComponent::InitAbilityActorInfo(AActor* InOwnerActor, AActor* InAvatarActor)
+{
+	Super::InitAbilityActorInfo(InOwnerActor, InAvatarActor);
+	ClearInputs();
+}
+
 
 void UAetherAbilitySystemComponent::AbilityInputPressed(const FGameplayTag& InputTag)
 {
@@ -100,10 +112,10 @@ void UAetherAbilitySystemComponent::AbilityInputReleased(const FGameplayTag& Inp
 void UAetherAbilitySystemComponent::AbilitySpecInputPressed(FGameplayAbilitySpec& Spec)
 {
 	Super::AbilitySpecInputPressed(Spec);
-	
+
 	if (Spec.Ability && Spec.IsActive())
 	{
- 		check(Spec.Ability->GetInstancingPolicy() == EGameplayAbilityInstancingPolicy::InstancedPerActor);
+		check(Spec.Ability->GetInstancingPolicy() == EGameplayAbilityInstancingPolicy::InstancedPerActor);
 		if (const UGameplayAbility* Instance = Spec.GetPrimaryInstance())
 		{
 			FPredictionKey PredictionKey = Instance->GetCurrentActivationInfo().GetActivationPredictionKey();
