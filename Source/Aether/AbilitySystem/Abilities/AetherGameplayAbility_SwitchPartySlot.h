@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AetherGameplayAbility.h"
+#include "Aether/AbilitySystem/AetherGameplayAbility.h"
 #include "AetherGameplayAbility_SwitchPartySlot.generated.h"
 
 /**

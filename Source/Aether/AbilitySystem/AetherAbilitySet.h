@@ -74,6 +74,6 @@ public:
 public:
 	UPROPERTY(EditDefaultsOnly, meta = (TitleProperty = Ability))
 	TArray<FAetherAbilitySet_GameplayAbility> Abilities;
-	UPROPERTY(EditDefaultsOnly, meta = (TitleProperty = GameplayEffect))
+	UPROPERTY(EditDefaultsOnly, meta = (TitleProperty = Effect))
 	TArray<FAetherAbilitySet_GameplayEffect> Effects;
 };

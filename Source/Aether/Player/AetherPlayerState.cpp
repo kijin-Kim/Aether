@@ -1,6 +1,6 @@
 #include "AetherPlayerState.h"
 
-#include "AetherCharacter.h"
+#include "Aether/Character/AetherCharacter.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/World.h"
 

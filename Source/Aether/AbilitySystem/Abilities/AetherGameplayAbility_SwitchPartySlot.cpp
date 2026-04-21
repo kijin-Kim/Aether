@@ -3,8 +3,8 @@
 
 #include "AetherGameplayAbility_SwitchPartySlot.h"
 
-#include "AetherGameplayTags.h"
-#include "AetherPlayerState.h"
+#include "Aether/AetherGameplayTags.h"
+#include "Aether/Player/AetherPlayerState.h"
 
 
 UAetherGameplayAbility_SwitchPartySlotBase::UAetherGameplayAbility_SwitchPartySlotBase()
@@ -16,13 +16,19 @@ UAetherGameplayAbility_SwitchPartySlotBase::UAetherGameplayAbility_SwitchPartySl
 void UAetherGameplayAbility_SwitchPartySlotBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-	
+
+	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
+
 	if (!HasAuthority(&ActivationInfo))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
-	
+
 	if (APawn* AvatarPawn = Cast<APawn>(ActorInfo->AvatarActor.Get()))
 	{
 		if (AAetherPlayerState* AetherASC = AvatarPawn->GetPlayerState<AAetherPlayerState>())

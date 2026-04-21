@@ -4,8 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
-#include "AetherAbilitySet.h"
-#include "AetherAbilitySystemComponent.h"
+#include "Aether/AbilitySystem/AetherAbilitySet.h"
+#include "Aether/AbilitySystem/AetherAbilitySystemComponent.h"
 #include "InputActionValue.h"
 #include "GameFramework/Character.h"
 #include "AetherCharacter.generated.h"

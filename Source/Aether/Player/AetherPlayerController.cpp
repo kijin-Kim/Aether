@@ -4,8 +4,8 @@
 #include "AetherPlayerController.h"
 
 #include "AbilitySystemComponent.h"
-#include "AetherAbilitySystemComponent.h"
-#include "AetherCharacter.h"
+#include "Aether/AbilitySystem/AetherAbilitySystemComponent.h"
+#include "Aether/Character/AetherCharacter.h"
 #include "AetherPlayerState.h"
 #include "EnhancedInputSubsystems.h"
 #include "GameFramework/PlayerState.h"
