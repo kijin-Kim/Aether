@@ -94,7 +94,7 @@ void AAetherCharacter::SetOnField(bool bSetOnField)
 {
 	bOnField = bSetOnField;
 	// TODO: 다른 것들도 꺼서 최적화
-	//SetActorHiddenInGame(!bOnField);
+	SetActorHiddenInGame(!bOnField);
 	SetActorTickEnabled(bOnField);
 	SetActorEnableCollision(bOnField);
 

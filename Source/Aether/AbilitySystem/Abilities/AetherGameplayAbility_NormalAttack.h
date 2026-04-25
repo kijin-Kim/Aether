@@ -6,6 +6,20 @@
 #include "Aether/AbilitySystem/AetherGameplayAbility.h"
 #include "AetherGameplayAbility_NormalAttack.generated.h"
 
+
+UENUM(BlueprintType)
+enum class EElement : uint8
+{
+	None,
+	Pyro,
+	Hydro,
+	Electro,
+	Cryo,
+	Anemo,
+	Geo,
+	Dendro
+};
+
 /**
  * 
  */
@@ -19,6 +33,8 @@ public:
 	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
 
 	void PlayCombo();
+
+	void ApplyElementalDamageToTarget(AActor* Target, float Damage, FGameplayTag ElementTag, float AuraGauge);
 
 private:
 	UFUNCTION()
@@ -36,9 +52,14 @@ private:
 
 private:
 	UPROPERTY(EditDefaultsOnly, Category = "Aether|Animation")
-	TArray<TObjectPtr<UAnimMontage>> Animations;
+	TArray<TObjectPtr<UAnimMontage>> GroundAttackAnimations;
+
 	int8 ComboIndex = 0;
-	
+
 	bool bComboWindowOpened = false;
 	bool bInputBuffered = false;
+
+
+	UPROPERTY(EditDefaultsOnly, Category = "Aether")
+	TSubclassOf<UGameplayEffect> ElementalDamageGE;
 };

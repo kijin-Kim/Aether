@@ -3,9 +3,12 @@
 
 #include "AetherGameplayAbility_NormalAttack.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
+#include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/Tasks/AbilityTask_WaitInputPress.h"
+#include "Aether/Aether.h"
 #include "Aether/AetherGameplayTags.h"
 
 void UAetherGameplayAbility_NormalAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -17,7 +20,7 @@ void UAetherGameplayAbility_NormalAttack::ActivateAbility(const FGameplayAbility
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
-	
+
 	PlayCombo();
 }
 
@@ -31,12 +34,12 @@ void UAetherGameplayAbility_NormalAttack::EndAbility(const FGameplayAbilitySpecH
 
 void UAetherGameplayAbility_NormalAttack::PlayCombo()
 {
-	check(Animations.IsValidIndex(ComboIndex));
+	check(GroundAttackAnimations.IsValidIndex(ComboIndex));
 
 	bComboWindowOpened = false;
 	bInputBuffered = false;
 
-	UAbilityTask_PlayMontageAndWait* PlayMontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, Animations[ComboIndex]);
+	UAbilityTask_PlayMontageAndWait* PlayMontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, GroundAttackAnimations[ComboIndex]);
 	PlayMontageTask->OnCompleted.AddDynamic(this, &UAetherGameplayAbility_NormalAttack::OnMontageCompleted);
 	PlayMontageTask->OnCancelled.AddDynamic(this, &UAetherGameplayAbility_NormalAttack::OnMontageCancelled);
 	PlayMontageTask->ReadyForActivation();
@@ -53,7 +56,30 @@ void UAetherGameplayAbility_NormalAttack::PlayCombo()
 	WaitInputTask->OnPress.AddDynamic(this, &UAetherGameplayAbility_NormalAttack::OnInputPressedEvent);
 	WaitInputTask->ReadyForActivation();
 
-	ComboIndex = (ComboIndex + 1) % Animations.Num();
+	ComboIndex = (ComboIndex + 1) % GroundAttackAnimations.Num();
+	
+	ApplyElementalDamageToTarget(GetAvatarActorFromActorInfo(), 10.0f, AetherGameplayTags::Element_Pyro, 1.0f);
+}
+
+void UAetherGameplayAbility_NormalAttack::ApplyElementalDamageToTarget(AActor* Target, float Damage, FGameplayTag ElementTag, float AuraGauge)
+{
+	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
+	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Target);
+
+
+	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
+	Context.AddSourceObject(GetAvatarActorFromActorInfo());
+	Context.AddInstigator(GetAvatarActorFromActorInfo(), GetAvatarActorFromActorInfo());
+
+	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(ElementalDamageGE, GetAbilityLevel(), Context);
+	FGameplayEffectSpec* Spec = SpecHandle.Data.Get();
+
+
+	Spec->SetSetByCallerMagnitude(AetherGameplayTags::Data_Damage, Damage);
+	Spec->SetSetByCallerMagnitude(AetherGameplayTags::Data_AuraGauge, AuraGauge);
+	Spec->AddDynamicAssetTag(ElementTag);
+
+	FActiveGameplayEffectHandle AppliedHandle = SourceASC->ApplyGameplayEffectSpecToTarget(*Spec, TargetASC);
 }
 
 void UAetherGameplayAbility_NormalAttack::OnMontageCompleted()

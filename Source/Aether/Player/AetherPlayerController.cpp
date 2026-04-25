@@ -40,3 +40,4 @@ void AAetherPlayerController::OnPossess(APawn* InPawn)
 	AetherPS->AuthInitializeParty(CastChecked<AAetherCharacter>(InPawn));
 	Super::OnPossess(InPawn);
 }
+
