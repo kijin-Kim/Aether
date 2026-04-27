@@ -88,11 +88,11 @@ void AAetherPlayerState::AuthSwitchPartySlot(int32 SlotIndex)
 
 	if (PartyCharacters.IsValidIndex(SlotIndex) && PartyCharacters[SlotIndex])
 	{
-		PC->Possess(PartyCharacters[SlotIndex]);
 		if (AAetherCharacter* OldCharacter = ActiveSlotIndex != INDEX_NONE ? PartyCharacters[ActiveSlotIndex] : nullptr)
 		{
 			PartyCharacters[SlotIndex]->SetActorTransform(OldCharacter->GetActorTransform());
 		}
+		PC->Possess(PartyCharacters[SlotIndex]);
 		ActiveSlotIndex = SlotIndex;
 	}
 }

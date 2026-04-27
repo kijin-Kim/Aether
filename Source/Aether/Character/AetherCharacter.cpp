@@ -59,7 +59,6 @@ void AAetherCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 				AetherInputComponent->BindInputAction(InputConfig, AetherGameplayTags::InputTag_Look, ETriggerEvent::Triggered, this, &AAetherCharacter::Look);
 			}
 		}
-			
 	}
 }
 
@@ -92,6 +91,16 @@ void AAetherCharacter::InitializeFromCharacterData(FName NewCharacterId)
 				}
 			}
 		}
+
+		if (CharacterData->Mesh)
+		{
+			GetMesh()->SetSkeletalMesh(CharacterData->Mesh.LoadSynchronous());
+		}
+
+		if (CharacterData->AnimInstanceClass)
+		{
+			GetMesh()->SetAnimInstanceClass(CharacterData->AnimInstanceClass.LoadSynchronous());
+		}
 	}
 }
 
@@ -103,12 +112,6 @@ void AAetherCharacter::SetOnField(bool bSetOnField)
 	SetActorTickEnabled(bOnField);
 	SetActorEnableCollision(bOnField);
 
-	if (USkeletalMeshComponent* MeshComp = GetMesh())
-	{
-		MeshComp->SetComponentTickEnabled(bOnField);
-		MeshComp->bPauseAnims = !bOnField;
-		MeshComp->bNoSkeletonUpdate = !bOnField;
-	}
 }
 
 void AAetherCharacter::AbilityInputPressed(FGameplayTag InputTag)
