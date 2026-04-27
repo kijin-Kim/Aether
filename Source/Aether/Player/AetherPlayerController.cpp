@@ -8,6 +8,8 @@
 #include "Aether/Character/AetherCharacter.h"
 #include "AetherPlayerState.h"
 #include "EnhancedInputSubsystems.h"
+#include "Aether/Aether.h"
+#include "Aether/AetherCharacterDatabase.h"
 #include "GameFramework/PlayerState.h"
 
 void AAetherPlayerController::BeginPlay()
@@ -19,6 +21,7 @@ void AAetherPlayerController::BeginPlay()
 		check(DefaultInputMappingContext)
 		Subsystem->AddMappingContext(DefaultInputMappingContext, 0);
 	}
+
 }
 
 
@@ -30,14 +33,7 @@ void AAetherPlayerController::PostProcessInput(const float DeltaTime, const bool
 		if (UAetherAbilitySystemComponent* AetherASC = AetherCharacter->GetAetherAbilitySystemComponent())
 		{
 			AetherASC->ProcessInputs();
-		}	
+		}
 	}
-}
-
-void AAetherPlayerController::OnPossess(APawn* InPawn)
-{
-	AAetherPlayerState* AetherPS = GetPlayerState<AAetherPlayerState>();
-	AetherPS->AuthInitializeParty(CastChecked<AAetherCharacter>(InPawn));
-	Super::OnPossess(InPawn);
 }
 

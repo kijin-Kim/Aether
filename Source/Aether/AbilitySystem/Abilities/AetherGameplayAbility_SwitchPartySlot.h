@@ -21,4 +21,6 @@ public:
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Aether|SwitchPartySlot")
 	int32 TargetSlotIndex;
+	UPROPERTY(EditDefaultsOnly, CallInEditor, Category = "Aether|SwitchPartySlot")
+	TSubclassOf<UGameplayEffect> SharedCooldownEffect;
 };

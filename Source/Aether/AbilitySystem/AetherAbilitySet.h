@@ -25,6 +25,8 @@ public:
 public:
 	TArray<FGameplayAbilitySpecHandle> AbilitySpecHandles;
 	TArray<FActiveGameplayEffectHandle> EffectSpecHandles;
+	UPROPERTY()
+	TArray<TObjectPtr<UAttributeSet>> AttributeSets;
 };
 
 
@@ -59,6 +61,16 @@ public:
 	float Level = 1.0f;
 };
 
+USTRUCT(BlueprintType)
+struct FAetherAbilitySet_AttributeSet
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UAttributeSet> AttributeSet;
+};
+
 
 /**
  * 
@@ -76,4 +88,6 @@ public:
 	TArray<FAetherAbilitySet_GameplayAbility> Abilities;
 	UPROPERTY(EditDefaultsOnly, meta = (TitleProperty = Effect))
 	TArray<FAetherAbilitySet_GameplayEffect> Effects;
+	UPROPERTY(EditDefaultsOnly, meta = (TitleProperty = AttributeSet))
+	TArray<FAetherAbilitySet_AttributeSet> AttributeSets;
 };

@@ -28,6 +28,16 @@ void FAetherAbilitySet_GrantedHandles::ClearAbilitySystem(UAetherAbilitySystemCo
 	}
 
 	EffectSpecHandles.Reset();
+
+	for (UAttributeSet* Set : AttributeSets)
+	{
+		if (Set)
+		{
+			AetherASC->RemoveSpawnedAttribute(Set);
+		}
+	}
+
+	AttributeSets.Reset();
 }
 
 FAetherAbilitySet_GameplayAbility::FAetherAbilitySet_GameplayAbility()
@@ -50,6 +60,16 @@ void UAetherAbilitySet::InitializeAbilitySystem(UAetherAbilitySystemComponent* A
 		{
 			const FActiveGameplayEffectHandle EffectHandle = AetherASC->ApplyGameplayEffectToSelf(Effect.Effect->GetDefaultObject<UGameplayEffect>(), Effect.Level, AetherASC->MakeEffectContext());
 			OutGrantedHandles.EffectSpecHandles.AddUnique(EffectHandle);
+		}
+	}
+
+	for (const FAetherAbilitySet_AttributeSet& AttributeSet : AttributeSets)
+	{
+		if (AttributeSet.AttributeSet)
+		{
+			UAttributeSet* NewSet = NewObject<UAttributeSet>(AetherASC->GetOwner(), AttributeSet.AttributeSet);
+			AetherASC->AddAttributeSetSubobject(NewSet);
+			OutGrantedHandles.AttributeSets.AddUnique(NewSet);
 		}
 	}
 }

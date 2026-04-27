@@ -18,8 +18,10 @@ class AETHER_API AAetherPlayerState : public APlayerState
     GENERATED_BODY()
     
 public:
-    void AuthInitializeParty(AAetherCharacter* CurrentCharacter);
+    virtual void BeginPlay() override;
+    void SpawnAndSetupCharacter(const TArray<FName>& CharacterIds);
     void AuthSwitchPartySlot(int32 SlotIndex);
+    
     
 
 private:

@@ -3,6 +3,7 @@
 
 #include "AetherGameplayAbility_SwitchPartySlot.h"
 
+#include "AbilitySystemComponent.h"
 #include "Aether/AetherGameplayTags.h"
 #include "Aether/Player/AetherPlayerState.h"
 
@@ -37,4 +38,6 @@ void UAetherGameplayAbility_SwitchPartySlotBase::ActivateAbility(const FGameplay
 			EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		}
 	}
+	
+	GetAbilitySystemComponentFromActorInfo()->ApplyGameplayEffectToSelf(SharedCooldownEffect.GetDefaultObject(), 1.0f, GetAbilitySystemComponentFromActorInfo()->MakeEffectContext());
 }

@@ -1,40 +1,70 @@
 #include "AetherPlayerState.h"
 
+#include "Aether/Aether.h"
+#include "Aether/AetherCharacterDatabase.h"
+#include "Aether/AbilitySystem/AetherCharacterData.h"
 #include "Aether/Character/AetherCharacter.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/World.h"
 
 
-void AAetherPlayerState::AuthInitializeParty(AAetherCharacter* CurrentCharacter)
+void AAetherPlayerState::BeginPlay()
 {
-	check(HasAuthority());
-	
-	if (PartyCharacters.Num() > 0)
+	Super::BeginPlay();
+	UAetherCharacterDatabase* DB = GetGameInstance()->GetSubsystem<UAetherCharacterDatabase>();
+	TArray<FName> Party = {"Yuito", "Hanabi"};
+	DB->LoadCharacterDataAsync(Party,
+	                           FStreamableDelegate::CreateLambda([this, Party]()
+	                           {
+		                           SpawnAndSetupCharacter(Party);
+	                           }));
+}
+
+void AAetherPlayerState::SpawnAndSetupCharacter(const TArray<FName>& CharacterIds)
+{
+	for (const FName& CharacterId : CharacterIds)
 	{
-		return;
-	}
-	
-	PartyCharacters.SetNum(4);
-	PartyCharacters[0] = CurrentCharacter;
-	for (int32 i = 1; i < 4; ++i)
-	{
-		FTransform SpawnTransform = CurrentCharacter->GetActorTransform();
-		AAetherCharacter* NewCharacter = GetWorld()->SpawnActor<AAetherCharacter>(CurrentCharacter->GetClass(), SpawnTransform);
-		if (NewCharacter)
+		UAetherCharacterDatabase* DB = GetGameInstance()->GetSubsystem<UAetherCharacterDatabase>();
+		UAetherCharacterData* CharacterData = DB->GetCharacterByID(CharacterId);
+		if (!CharacterData)
 		{
-			PartyCharacters[i] = NewCharacter;
+			UE_LOG(LogAether, Warning, TEXT("Character data not found for ID: %s"), *CharacterId.ToString());
+			return;
+		}
+
+		UWorld* World = GetWorld();
+		if (!World)
+		{
+			UE_LOG(LogAether, Warning, TEXT("World not found"));
+			return;
+		}
+
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+		FTransform SpawnTransform = FTransform::Identity;
+		APlayerController* PC = GetPlayerController();
+		if (PC && PC->StartSpot.Get())
+		{
+			SpawnTransform = PC->StartSpot->GetActorTransform();
+		}
+
+		if (AAetherCharacter* SpawnedCharacter = World->SpawnActor<AAetherCharacter>(CharacterData->CharacterClass.LoadSynchronous(), SpawnTransform, SpawnParams))
+		{
+			SpawnedCharacter->InitializeFromCharacterData(CharacterId);
+			PartyCharacters.Add(SpawnedCharacter);
+			UE_LOG(LogAether, Log, TEXT("Successfully spawned character for ID: %s"), *CharacterId.ToString());
+		}
+		else
+		{
+			UE_LOG(LogAether, Warning, TEXT("Failed to spawn character for ID: %s"), *CharacterId.ToString());
 		}
 	}
 
-	for (AAetherCharacter* Character : PartyCharacters)
+	if (!PartyCharacters.IsEmpty())
 	{
-		if (Character)
-		{
-			Character->SetOnField(false);
-		}
+		AuthSwitchPartySlot(0);
 	}
-
-	ActiveSlotIndex = 0;
 }
 
 void AAetherPlayerState::AuthSwitchPartySlot(int32 SlotIndex)
@@ -56,13 +86,12 @@ void AAetherPlayerState::AuthSwitchPartySlot(int32 SlotIndex)
 		return;
 	}
 
-	
 	if (PartyCharacters.IsValidIndex(SlotIndex) && PartyCharacters[SlotIndex])
 	{
 		PC->Possess(PartyCharacters[SlotIndex]);
 		if (AAetherCharacter* OldCharacter = ActiveSlotIndex != INDEX_NONE ? PartyCharacters[ActiveSlotIndex] : nullptr)
 		{
-			PartyCharacters[SlotIndex]->SetActorTransform(OldCharacter->GetActorTransform());	
+			PartyCharacters[SlotIndex]->SetActorTransform(OldCharacter->GetActorTransform());
 		}
 		ActiveSlotIndex = SlotIndex;
 	}

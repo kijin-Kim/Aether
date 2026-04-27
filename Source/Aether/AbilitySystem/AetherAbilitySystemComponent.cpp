@@ -78,7 +78,6 @@ void UAetherAbilitySystemComponent::InitAbilityActorInfo(AActor* InOwnerActor, A
 	ClearInputs();
 }
 
-
 void UAetherAbilitySystemComponent::AbilityInputPressed(const FGameplayTag& InputTag)
 {
 	if (InputTag.IsValid())

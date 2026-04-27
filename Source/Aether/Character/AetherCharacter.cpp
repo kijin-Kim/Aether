@@ -3,28 +3,25 @@
 
 #include "AetherCharacter.h"
 
-#include "AbilitySystemComponent.h"
 #include "Aether/AbilitySystem/AetherAbilitySet.h"
-#include "Aether/AbilitySystem/AetherAttributeSet.h"
+#include "Aether/AbilitySystem/AttributeSet/AetherBaseAttributeSet.h"
 #include "Aether/AetherGameplayTags.h"
 #include "Aether/Input/AetherInputComponent.h"
 #include "EnhancedInputComponent.h"
+#include "Aether/AetherCharacterDatabase.h"
+#include "Aether/AbilitySystem/AetherCharacterData.h"
+#include "Aether/AbilitySystem/AttributeSet/AetherHeroAttributeSet.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
-#include "Net/UnrealNetwork.h"
 
 
 AAetherCharacter::AAetherCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	bReplicates = true;
 
 	AetherASC = CreateDefaultSubobject<UAetherAbilitySystemComponent>("AetherASC");
-	AetherASC->SetIsReplicated(true);
-	AetherASC->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
-	AetherAttributeSet = CreateDefaultSubobject<UAetherAttributeSet>("AetherAttributeSet");
 
 	bUseControllerRotationYaw = false;
 
@@ -46,34 +43,31 @@ AAetherCharacter::AAetherCharacter()
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 }
 
-void AAetherCharacter::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(AAetherCharacter, bOnField);
-}
 
 void AAetherCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	if (UAetherInputComponent* AetherInputComponent = CastChecked<UAetherInputComponent>(PlayerInputComponent))
+	if (UAetherCharacterData* CharacterData = GetGameInstance()->GetSubsystem<UAetherCharacterDatabase>()->GetCharacterByID(CharacterId))
 	{
-		AetherInputComponent->BindAbilityInputAction(InputConfig, this, &AAetherCharacter::AbilityInputPressed, &AAetherCharacter::AbilityInputReleased);
-		AetherInputComponent->BindInputAction(InputConfig, AetherGameplayTags::InputTag_Move, ETriggerEvent::Triggered, this, &AAetherCharacter::Move);
-		AetherInputComponent->BindInputAction(InputConfig, AetherGameplayTags::InputTag_Look, ETriggerEvent::Triggered, this, &AAetherCharacter::Look);
+		if (UAetherInputConfig* InputConfig = CharacterData->InputConfig.LoadSynchronous())
+		{
+			if (UAetherInputComponent* AetherInputComponent = CastChecked<UAetherInputComponent>(PlayerInputComponent))
+			{
+				AetherInputComponent->BindAbilityInputAction(InputConfig, this, &AAetherCharacter::AbilityInputPressed, &AAetherCharacter::AbilityInputReleased);
+				AetherInputComponent->BindInputAction(InputConfig, AetherGameplayTags::InputTag_Move, ETriggerEvent::Triggered, this, &AAetherCharacter::Move);
+				AetherInputComponent->BindInputAction(InputConfig, AetherGameplayTags::InputTag_Look, ETriggerEvent::Triggered, this, &AAetherCharacter::Look);
+			}
+		}
+			
 	}
 }
 
 void AAetherCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-
 	SetOnField(true);
 	AetherASC->InitAbilityActorInfo(this, this);
-	if (ensure(AbilitySet))
-	{
-		AbilitySet->InitializeAbilitySystem(AetherASC, GrantedAbilitySetHandles, nullptr);
-	}
 }
 
 void AAetherCharacter::UnPossessed()
@@ -81,13 +75,24 @@ void AAetherCharacter::UnPossessed()
 	Super::UnPossessed();
 	SetOnField(false);
 	AetherASC->ClearInputs();
-	GrantedAbilitySetHandles.ClearAbilitySystem(AetherASC);
 }
 
-void AAetherCharacter::OnRep_PlayerState()
+void AAetherCharacter::InitializeFromCharacterData(FName NewCharacterId)
 {
-	Super::OnRep_PlayerState();
-	AetherASC->InitAbilityActorInfo(this, this);
+	CharacterId = NewCharacterId;
+	if (UAetherCharacterData* CharacterData = GetGameInstance()->GetSubsystem<UAetherCharacterDatabase>()->GetCharacterByID(CharacterId))
+	{
+		for (const TSoftObjectPtr<UAetherAbilitySet>& AbilitySetPtr : CharacterData->AbilitySets)
+		{
+			if (UAetherAbilitySet* AbilitySet = AbilitySetPtr.LoadSynchronous())
+			{
+				if (AbilitySet)
+				{
+					AbilitySet->InitializeAbilitySystem(AetherASC, GrantedAbilitySetHandles, nullptr);
+				}
+			}
+		}
+	}
 }
 
 void AAetherCharacter::SetOnField(bool bSetOnField)
@@ -133,9 +138,4 @@ void AAetherCharacter::Look(const FInputActionValue& InputActionValue)
 	FVector2D InputVector = InputActionValue.Get<FVector2D>();
 	AddControllerPitchInput(InputVector.Y);
 	AddControllerYawInput(InputVector.X);
-}
-
-void AAetherCharacter::OnRep_OnField()
-{
-	SetOnField(bOnField);
 }

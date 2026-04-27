@@ -18,7 +18,6 @@ class AETHER_API AAetherPlayerController : public APlayerController
 public:
 	virtual void BeginPlay() override;
 	virtual void PostProcessInput(const float DeltaTime, const bool bGamePaused) override;
-	virtual void OnPossess(APawn* InPawn) override;
 
 	
 	
