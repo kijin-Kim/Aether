@@ -3,14 +3,17 @@
 
 #include "AetherCharacter.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
 #include "Aether/AbilitySystem/AetherAbilitySet.h"
 #include "Aether/AbilitySystem/AttributeSet/AetherBaseAttributeSet.h"
 #include "Aether/AetherGameplayTags.h"
 #include "Aether/Input/AetherInputComponent.h"
 #include "EnhancedInputComponent.h"
+#include "Aether/Aether.h"
 #include "Aether/AetherCharacterDatabase.h"
 #include "Aether/AbilitySystem/AetherCharacterData.h"
 #include "Aether/AbilitySystem/AttributeSet/AetherHeroAttributeSet.h"
+#include "Aether/AbilitySystem/Effects/AetherGameplayEffect_ElementalDamage.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -43,7 +46,6 @@ AAetherCharacter::AAetherCharacter()
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 }
 
-
 void AAetherCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -75,6 +77,26 @@ void AAetherCharacter::UnPossessed()
 	SetOnField(false);
 	AetherASC->ClearInputs();
 }
+
+void AAetherCharacter::ReceiveElementalAttack_Implementation(AActor* SourceActor, FGameplayTag ElementTypeTag, float Damage, float Gauge)
+{
+	UAbilitySystemComponent* SourceASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(SourceActor);
+	UAbilitySystemComponent* TargetASC = GetAbilitySystemComponent();
+	
+	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
+	Context.AddSourceObject(SourceASC->GetAvatarActor());
+	Context.AddInstigator(SourceASC->GetAvatarActor(), SourceASC->GetAvatarActor());
+
+	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(UAetherGameplayEffect_ElementalDamage::StaticClass(), 1.0f, Context);
+	FGameplayEffectSpec* Spec = SpecHandle.Data.Get();
+	
+	Spec->SetSetByCallerMagnitude(AetherGameplayTags::Data_Damage, Damage);
+	Spec->SetSetByCallerMagnitude(AetherGameplayTags::Data_AuraGauge, Gauge);
+	Spec->AddDynamicAssetTag(ElementTypeTag);
+
+	FActiveGameplayEffectHandle AppliedHandle = SourceASC->ApplyGameplayEffectSpecToTarget(*Spec, TargetASC);
+}
+
 
 void AAetherCharacter::InitializeFromCharacterData(FName NewCharacterId)
 {

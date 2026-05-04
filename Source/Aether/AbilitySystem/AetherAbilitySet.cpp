@@ -47,6 +47,16 @@ FAetherAbilitySet_GameplayAbility::FAetherAbilitySet_GameplayAbility()
 
 void UAetherAbilitySet::InitializeAbilitySystem(UAetherAbilitySystemComponent* AetherASC, FAetherAbilitySet_GrantedHandles& OutGrantedHandles, UObject* SourceObject) const
 {
+	for (const FAetherAbilitySet_AttributeSet& AttributeSet : AttributeSets)
+	{
+		if (AttributeSet.AttributeSet)
+		{
+			UAttributeSet* NewSet = NewObject<UAttributeSet>(AetherASC->GetOwner(), AttributeSet.AttributeSet);
+			AetherASC->AddAttributeSetSubobject(NewSet);
+			OutGrantedHandles.AttributeSets.AddUnique(NewSet);
+		}
+	}
+
 	for (const FAetherAbilitySet_GameplayAbility& Ability : Abilities)
 	{
 		FGameplayAbilitySpec AbilitySpec(Ability.Ability, Ability.Level, INDEX_NONE, SourceObject);
@@ -63,13 +73,4 @@ void UAetherAbilitySet::InitializeAbilitySystem(UAetherAbilitySystemComponent* A
 		}
 	}
 
-	for (const FAetherAbilitySet_AttributeSet& AttributeSet : AttributeSets)
-	{
-		if (AttributeSet.AttributeSet)
-		{
-			UAttributeSet* NewSet = NewObject<UAttributeSet>(AetherASC->GetOwner(), AttributeSet.AttributeSet);
-			AetherASC->AddAttributeSetSubobject(NewSet);
-			OutGrantedHandles.AttributeSets.AddUnique(NewSet);
-		}
-	}
 }

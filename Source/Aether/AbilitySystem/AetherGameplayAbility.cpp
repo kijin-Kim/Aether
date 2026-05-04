@@ -4,6 +4,7 @@
 #include "AetherGameplayAbility.h"
 
 #include "AbilitySystemComponent.h"
+#include "Aether/Element/ElementalReactiveInterface.h"
 
 UAetherGameplayAbility::UAetherGameplayAbility()
 	: ActivationPolicy(EAetherAbilityActivationPolicy::OnInputTriggered)
@@ -20,4 +21,18 @@ void UAetherGameplayAbility::OnGiveAbility(const FGameplayAbilityActorInfo* Acto
 	{
 		ActorInfo->AbilitySystemComponent->TryActivateAbility(Spec.Handle);
 	}
+}
+
+void UAetherGameplayAbility::ApplyElementalAttackToTarget(AActor* Target, FGameplayTag ElementTypeTag, float Damage, float Gauge)
+{
+	if (!Target)
+	{
+		return;
+	}
+
+	if (Target->Implements<UElementalReactiveInterface>())
+	{
+		IElementalReactiveInterface::Execute_ReceiveElementalAttack(GetOwningActorFromActorInfo(), Target, ElementTypeTag, Damage, Gauge);
+	}
+
 }

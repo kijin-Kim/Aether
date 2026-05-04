@@ -52,6 +52,7 @@ void AAetherPlayerState::SpawnAndSetupCharacter(const TArray<FName>& CharacterId
 		if (AAetherCharacter* SpawnedCharacter = World->SpawnActor<AAetherCharacter>(CharacterData->CharacterClass.LoadSynchronous(), SpawnTransform, SpawnParams))
 		{
 			SpawnedCharacter->InitializeFromCharacterData(CharacterId);
+			SpawnedCharacter->SetOnField(false);
 			PartyCharacters.Add(SpawnedCharacter);
 			UE_LOG(LogAether, Log, TEXT("Successfully spawned character for ID: %s"), *CharacterId.ToString());
 		}

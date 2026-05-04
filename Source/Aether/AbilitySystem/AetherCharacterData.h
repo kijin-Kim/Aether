@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "Engine/DataAsset.h"
 #include "AetherCharacterData.generated.h"
 
@@ -26,6 +27,9 @@ public:
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Aether|Character")
 	FName CharacterId;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Aether|Character", meta = (Categories = "Element"))
+	FGameplayTag Element;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Aether|Character")
 	TSoftClassPtr<AAetherCharacter> CharacterClass;

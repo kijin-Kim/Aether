@@ -58,28 +58,7 @@ void UAetherGameplayAbility_NormalAttack::PlayCombo()
 
 	ComboIndex = (ComboIndex + 1) % GroundAttackAnimations.Num();
 	
-	ApplyElementalDamageToTarget(GetAvatarActorFromActorInfo(), 10.0f, AetherGameplayTags::Element_Pyro, 1.0f);
-}
-
-void UAetherGameplayAbility_NormalAttack::ApplyElementalDamageToTarget(AActor* Target, float Damage, FGameplayTag ElementTag, float AuraGauge)
-{
-	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
-	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Target);
-
-
-	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
-	Context.AddSourceObject(GetAvatarActorFromActorInfo());
-	Context.AddInstigator(GetAvatarActorFromActorInfo(), GetAvatarActorFromActorInfo());
-
-	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(ElementalDamageGE, GetAbilityLevel(), Context);
-	FGameplayEffectSpec* Spec = SpecHandle.Data.Get();
-
-
-	Spec->SetSetByCallerMagnitude(AetherGameplayTags::Data_Damage, Damage);
-	Spec->SetSetByCallerMagnitude(AetherGameplayTags::Data_AuraGauge, AuraGauge);
-	Spec->AddDynamicAssetTag(ElementTag);
-
-	FActiveGameplayEffectHandle AppliedHandle = SourceASC->ApplyGameplayEffectSpecToTarget(*Spec, TargetASC);
+	ApplyElementalAttackToTarget(GetAvatarActorFromActorInfo(), AetherGameplayTags::Element_Pyro, 10.0f, 5.0f);
 }
 
 void UAetherGameplayAbility_NormalAttack::OnMontageCompleted()

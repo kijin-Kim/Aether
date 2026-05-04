@@ -34,8 +34,6 @@ public:
 
 	void PlayCombo();
 
-	void ApplyElementalDamageToTarget(AActor* Target, float Damage, FGameplayTag ElementTag, float AuraGauge);
-
 private:
 	UFUNCTION()
 	void OnMontageCompleted();

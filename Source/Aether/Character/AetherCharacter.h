@@ -7,6 +7,7 @@
 #include "Aether/AbilitySystem/AetherAbilitySet.h"
 #include "Aether/AbilitySystem/AetherAbilitySystemComponent.h"
 #include "InputActionValue.h"
+#include "Aether/Element/ElementalReactiveInterface.h"
 #include "GameFramework/Character.h"
 #include "AetherCharacter.generated.h"
 
@@ -24,7 +25,7 @@ class USpringArmComponent;
 
 
 UCLASS()
-class AETHER_API AAetherCharacter : public ACharacter, public IAbilitySystemInterface
+class AETHER_API AAetherCharacter : public ACharacter, public IAbilitySystemInterface, public IElementalReactiveInterface
 {
 	GENERATED_BODY()
 
@@ -33,6 +34,7 @@ public:
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void UnPossessed() override;
+	void ReceiveElementalAttack_Implementation(AActor* SourceActor, FGameplayTag ElementTypeTag, float Damage, float Gauge) override;
 
 	void InitializeFromCharacterData(FName NewCharacterId);
 
