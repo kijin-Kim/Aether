@@ -11,6 +11,11 @@
 #include "Aether/Aether.h"
 #include "Aether/AetherGameplayTags.h"
 
+void UAetherGameplayAbility_NormalAttack::OnAttackHit(FGameplayEventData Payload)
+{
+	UE_LOG(LogTemp, Log, TEXT("Attack hit event received! Target: %s"), *Payload.Target->GetName());
+}
+
 void UAetherGameplayAbility_NormalAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
@@ -20,8 +25,14 @@ void UAetherGameplayAbility_NormalAttack::ActivateAbility(const FGameplayAbility
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
+	
+	
+	UAbilityTask_WaitGameplayEvent* AttackHit = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, AetherGameplayTags::Event_Montage_AttackHit);
+	AttackHit->EventReceived.AddDynamic(this, &UAetherGameplayAbility_NormalAttack::OnAttackHit);
+	AttackHit->ReadyForActivation();
 
 	PlayCombo();
+	
 }
 
 void UAetherGameplayAbility_NormalAttack::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
@@ -44,11 +55,11 @@ void UAetherGameplayAbility_NormalAttack::PlayCombo()
 	PlayMontageTask->OnCancelled.AddDynamic(this, &UAetherGameplayAbility_NormalAttack::OnMontageCancelled);
 	PlayMontageTask->ReadyForActivation();
 
-	UAbilityTask_WaitGameplayEvent* WindowOpenedTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, AetherGameplayTags::NormalAttack_ComboWindow_Opened);
+	UAbilityTask_WaitGameplayEvent* WindowOpenedTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, AetherGameplayTags::Event_NormalAttack_ComboWindow_Opened);
 	WindowOpenedTask->EventReceived.AddDynamic(this, &UAetherGameplayAbility_NormalAttack::OnWindowOpenedEvent);
 	WindowOpenedTask->ReadyForActivation();
 
-	UAbilityTask_WaitGameplayEvent* WindowClosedTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, AetherGameplayTags::NormalAttack_ComboWindow_Closed);
+	UAbilityTask_WaitGameplayEvent* WindowClosedTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, AetherGameplayTags::Event_NormalAttack_ComboWindow_Closed);
 	WindowClosedTask->EventReceived.AddDynamic(this, &UAetherGameplayAbility_NormalAttack::OnWindowClosedEvent);
 	WindowClosedTask->ReadyForActivation();
 

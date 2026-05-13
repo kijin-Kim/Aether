@@ -25,6 +25,9 @@ namespace AetherGameplayTags
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Cooldown_Ability_SwitchPartySlot, "Cooldown.Ability.SwitchPartySlot", "Cooldown for Switch Party Slot Ability");
 
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(NormalAttack_ComboWindow_Opened, "NormalAttack.ComboWindow.Opened", "Normal Attack Combo Window Opened");
-	UE_DEFINE_GAMEPLAY_TAG_COMMENT(NormalAttack_ComboWindow_Closed, "NormalAttack.ComboWindow.Closed", "Normal Attack Combo Window Closed");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_NormalAttack_ComboWindow_Opened, "Event.Montage.NormalAttack.ComboWindow.Opened", "Normal Attack Combo Window Opened");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_NormalAttack_ComboWindow_Closed, "Event.Montage.NormalAttack.ComboWindow.Closed", "Normal Attack Combo Window Closed");
+	
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Event_Montage_AttackHit, "Event.Montage.AttackHit", "Attack Hit Event from Montage");
+	
 }

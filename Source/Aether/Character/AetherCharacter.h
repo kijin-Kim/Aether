@@ -7,7 +7,7 @@
 #include "Aether/AbilitySystem/AetherAbilitySet.h"
 #include "Aether/AbilitySystem/AetherAbilitySystemComponent.h"
 #include "InputActionValue.h"
-#include "Aether/Element/ElementalReactiveInterface.h"
+#include "Aether/Weapon/WeaponHolder.h"
 #include "GameFramework/Character.h"
 #include "AetherCharacter.generated.h"
 
@@ -25,22 +25,24 @@ class USpringArmComponent;
 
 
 UCLASS()
-class AETHER_API AAetherCharacter : public ACharacter, public IAbilitySystemInterface, public IElementalReactiveInterface
+class AETHER_API AAetherCharacter : public ACharacter, public IAbilitySystemInterface, public IWeaponHolder
 {
 	GENERATED_BODY()
 
 public:
 	AAetherCharacter();
+	
+	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void UnPossessed() override;
-	void ReceiveElementalAttack_Implementation(AActor* SourceActor, FGameplayTag ElementTypeTag, float Damage, float Gauge) override;
 
 	void InitializeFromCharacterData(FName NewCharacterId);
 
 
 	void SetOnField(bool bSetOnField);
 
+	virtual UStaticMeshComponent* GetWeaponMesh() const override { return WeaponMeshComponent;}
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return AetherASC; }
 	UAetherAbilitySystemComponent* GetAetherAbilitySystemComponent() const { return AetherASC; }
 
@@ -63,7 +65,13 @@ private:
 	TObjectPtr<USpringArmComponent> SpringArmComponent;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCameraComponent> CameraComponent;
-
-
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UStaticMeshComponent> WeaponMeshComponent;
+	UPROPERTY(EditAnywhere)
+	FName WeaponSocketName = NAME_None;
+	
 	FAetherAbilitySet_GrantedHandles GrantedAbilitySetHandles;
+	
+	
 };

@@ -42,8 +42,16 @@ AAetherCharacter::AAetherCharacter()
 
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>("Camera");
 	CameraComponent->SetupAttachment(SpringArmComponent);
-
+	
+	WeaponMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>("Weapon");
+	WeaponMeshComponent->SetupAttachment(GetMesh(), WeaponSocketName);
 	GetCharacterMovement()->bOrientRotationToMovement = true;
+}
+
+void AAetherCharacter::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+	WeaponMeshComponent->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocketName);
 }
 
 void AAetherCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -76,25 +84,6 @@ void AAetherCharacter::UnPossessed()
 	Super::UnPossessed();
 	SetOnField(false);
 	AetherASC->ClearInputs();
-}
-
-void AAetherCharacter::ReceiveElementalAttack_Implementation(AActor* SourceActor, FGameplayTag ElementTypeTag, float Damage, float Gauge)
-{
-	UAbilitySystemComponent* SourceASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(SourceActor);
-	UAbilitySystemComponent* TargetASC = GetAbilitySystemComponent();
-	
-	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
-	Context.AddSourceObject(SourceASC->GetAvatarActor());
-	Context.AddInstigator(SourceASC->GetAvatarActor(), SourceASC->GetAvatarActor());
-
-	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(UAetherGameplayEffect_ElementalDamage::StaticClass(), 1.0f, Context);
-	FGameplayEffectSpec* Spec = SpecHandle.Data.Get();
-	
-	Spec->SetSetByCallerMagnitude(AetherGameplayTags::Data_Damage, Damage);
-	Spec->SetSetByCallerMagnitude(AetherGameplayTags::Data_AuraGauge, Gauge);
-	Spec->AddDynamicAssetTag(ElementTypeTag);
-
-	FActiveGameplayEffectHandle AppliedHandle = SourceASC->ApplyGameplayEffectSpecToTarget(*Spec, TargetASC);
 }
 
 

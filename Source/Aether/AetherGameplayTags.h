@@ -24,7 +24,9 @@ namespace AetherGameplayTags
 	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Ability_SwitchPartySlot)
 	
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(NormalAttack_ComboWindow_Opened)
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(NormalAttack_ComboWindow_Closed)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_NormalAttack_ComboWindow_Opened)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_NormalAttack_ComboWindow_Closed)
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Montage_AttackHit)
 	
 }
