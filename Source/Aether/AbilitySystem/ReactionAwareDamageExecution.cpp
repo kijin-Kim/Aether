@@ -4,6 +4,7 @@
 #include "ReactionAwareDamageExecution.h"
 
 #include "AbilitySystemComponent.h"
+#include "AetherElementalReactionResolver.h"
 #include "AttributeSet/AetherBaseAttributeSet.h"
 #include "Aether/AetherGameplayTags.h"
 #include "AttributeSet/AetherHeroAttributeSet.h"
@@ -39,10 +40,10 @@ struct FReactionDamageStatics
 	DECLARE_ATTRIBUTE_CAPTUREDEF(GeoAura);
 
 
-	DECLARE_ATTRIBUTE_CAPTUREDEF(CritRate)
-	DECLARE_ATTRIBUTE_CAPTUREDEF(CritDamage)
-	DECLARE_ATTRIBUTE_CAPTUREDEF(EnergyRecharge)
-	DECLARE_ATTRIBUTE_CAPTUREDEF(ElementalMastery)
+	DECLARE_ATTRIBUTE_CAPTUREDEF(CritRate);
+	DECLARE_ATTRIBUTE_CAPTUREDEF(CritDamage);
+	DECLARE_ATTRIBUTE_CAPTUREDEF(EnergyRecharge);
+	DECLARE_ATTRIBUTE_CAPTUREDEF(ElementalMastery);
 
 
 	FReactionDamageStatics()
@@ -61,13 +62,13 @@ struct FReactionDamageStatics
 		);
 		DEFINE_ATTRIBUTE_CAPTUREDEF(UAetherBaseAttributeSet, Atk, Source, false);
 
-		DEFINE_ATTRIBUTE_CAPTUREDEF(UAetherBaseAttributeSet, PhysicalDamageBonus, Target, false);
-		DEFINE_ATTRIBUTE_CAPTUREDEF(UAetherBaseAttributeSet, PyroDamageBonus, Target, false);
-		DEFINE_ATTRIBUTE_CAPTUREDEF(UAetherBaseAttributeSet, HydroDamageBonus, Target, false);
-		DEFINE_ATTRIBUTE_CAPTUREDEF(UAetherBaseAttributeSet, ElectroDamageBonus, Target, false);
-		DEFINE_ATTRIBUTE_CAPTUREDEF(UAetherBaseAttributeSet, AnemoDamageBonus, Target, false);
-		DEFINE_ATTRIBUTE_CAPTUREDEF(UAetherBaseAttributeSet, CryoDamageBonus, Target, false);
-		DEFINE_ATTRIBUTE_CAPTUREDEF(UAetherBaseAttributeSet, GeoDamageBonus, Target, false);
+		DEFINE_ATTRIBUTE_CAPTUREDEF(UAetherBaseAttributeSet, PhysicalDamageBonus, Source, false);
+		DEFINE_ATTRIBUTE_CAPTUREDEF(UAetherBaseAttributeSet, PyroDamageBonus, Source, false);
+		DEFINE_ATTRIBUTE_CAPTUREDEF(UAetherBaseAttributeSet, HydroDamageBonus, Source, false);
+		DEFINE_ATTRIBUTE_CAPTUREDEF(UAetherBaseAttributeSet, ElectroDamageBonus, Source, false);
+		DEFINE_ATTRIBUTE_CAPTUREDEF(UAetherBaseAttributeSet, AnemoDamageBonus, Source, false);
+		DEFINE_ATTRIBUTE_CAPTUREDEF(UAetherBaseAttributeSet, CryoDamageBonus, Source, false);
+		DEFINE_ATTRIBUTE_CAPTUREDEF(UAetherBaseAttributeSet, GeoDamageBonus, Source, false);
 
 
 		DEFINE_ATTRIBUTE_CAPTUREDEF(UAetherBaseAttributeSet, PhysicalRes, Target, false);
@@ -98,6 +99,133 @@ static const FReactionDamageStatics& Statics()
 {
 	static FReactionDamageStatics S;
 	return S;
+}
+
+struct FDamageBonusSnapshot
+{
+	float Physical = 0.0f;
+	float Pyro = 0.0f;
+	float Hydro = 0.0f;
+	float Electro = 0.0f;
+	float Cryo = 0.0f;
+	float Anemo = 0.0f;
+	float Geo = 0.0f;
+};
+
+struct FResSnapShot
+{
+	float Physical = 0.0f;
+	float Pyro = 0.0f;
+	float Hydro = 0.0f;
+	float Electro = 0.0f;
+	float Cryo = 0.0f;
+	float Anemo = 0.0f;
+	float Geo = 0.0f;
+};
+
+static FGameplayTag GetElementTagFromSpec(const FGameplayEffectSpec& Spec)
+{
+	const FGameplayTagContainer& AssetTags = Spec.GetDynamicAssetTags();
+	if (AssetTags.HasTagExact(AetherGameplayTags::Element_Pyro))
+	{
+		return AetherGameplayTags::Element_Pyro;
+	}
+	if (AssetTags.HasTagExact(AetherGameplayTags::Element_Hydro))
+	{
+		return AetherGameplayTags::Element_Hydro;
+	}
+	if (AssetTags.HasTagExact(AetherGameplayTags::Element_Electro))
+	{
+		return AetherGameplayTags::Element_Electro;
+	}
+	if (AssetTags.HasTagExact(AetherGameplayTags::Element_Cryo))
+	{
+		return AetherGameplayTags::Element_Cryo;
+	}
+	if (AssetTags.HasTagExact(AetherGameplayTags::Element_Anemo))
+	{
+		return AetherGameplayTags::Element_Anemo;
+	}
+	if (AssetTags.HasTagExact(AetherGameplayTags::Element_Geo))
+	{
+		return AetherGameplayTags::Element_Geo;
+	}
+
+	return FGameplayTag();
+}
+
+static float GetDamageBonusForElement(FGameplayTag ElementTag, const FDamageBonusSnapshot& DamageBonusSnapShot)
+{
+	if (ElementTag == AetherGameplayTags::Element_Pyro)
+	{
+		return DamageBonusSnapShot.Pyro;
+	}
+	if (ElementTag == AetherGameplayTags::Element_Hydro)
+	{
+		return DamageBonusSnapShot.Hydro;
+	}
+	if (ElementTag == AetherGameplayTags::Element_Electro)
+	{
+		return DamageBonusSnapShot.Electro;
+	}
+	if (ElementTag == AetherGameplayTags::Element_Cryo)
+	{
+		return DamageBonusSnapShot.Cryo;
+	}
+	if (ElementTag == AetherGameplayTags::Element_Anemo)
+	{
+		return DamageBonusSnapShot.Anemo;
+	}
+	if (ElementTag == AetherGameplayTags::Element_Geo)
+	{
+		return DamageBonusSnapShot.Geo;
+	}
+
+	return DamageBonusSnapShot.Physical;
+}
+
+static float GetResistanceForElement(FGameplayTag ElementTag, const FResSnapShot& ResSnapShot)
+{
+	if (ElementTag == AetherGameplayTags::Element_Pyro)
+	{
+		return ResSnapShot.Pyro;
+	}
+	if (ElementTag == AetherGameplayTags::Element_Hydro)
+	{
+		return ResSnapShot.Hydro;
+	}
+	if (ElementTag == AetherGameplayTags::Element_Electro)
+	{
+		return ResSnapShot.Electro;
+	}
+	if (ElementTag == AetherGameplayTags::Element_Cryo)
+	{
+		return ResSnapShot.Cryo;
+	}
+	if (ElementTag == AetherGameplayTags::Element_Anemo)
+	{
+		return ResSnapShot.Anemo;
+	}
+	if (ElementTag == AetherGameplayTags::Element_Geo)
+	{
+		return ResSnapShot.Geo;
+	}
+
+	return ResSnapShot.Physical;
+}
+
+static float CalculateResistanceMultiplier(float Resistance)
+{
+	if (Resistance < 0.0f)
+	{
+		return 1.0f - Resistance * 0.5f;
+	}
+	if (Resistance < 0.75f)
+	{
+		return 1.0f - Resistance;
+	}
+
+	return 1.0f / (4.0f * Resistance + 1.0f);
 }
 
 
@@ -167,16 +295,7 @@ void UReactionAwareDamageExecution::Execute_Implementation(const FGameplayEffect
 	ExecParams.AttemptCalculateCapturedAttributeMagnitude(Statics().DefenderLevelDef, EvalParams, DefenderLevel);
 
 
-	struct FDamageBonusSnapshot
-	{
-		float Physical = 0;
-		float Pyro = 0;
-		float Hydro = 0;
-		float Electro = 0;
-		float Cryo = 0;
-		float Anemo = 0;
-		float Geo = 0;
-	} DamageBonusSnapShot;
+	FDamageBonusSnapshot DamageBonusSnapShot;
 
 	ExecParams.AttemptCalculateCapturedAttributeMagnitude(Statics().PhysicalDamageBonusDef, EvalParams, DamageBonusSnapShot.Physical);
 	ExecParams.AttemptCalculateCapturedAttributeMagnitude(Statics().PyroDamageBonusDef, EvalParams, DamageBonusSnapShot.Pyro);
@@ -187,16 +306,7 @@ void UReactionAwareDamageExecution::Execute_Implementation(const FGameplayEffect
 	ExecParams.AttemptCalculateCapturedAttributeMagnitude(Statics().GeoDamageBonusDef, EvalParams, DamageBonusSnapShot.Geo);
 
 
-	struct FResSnapShot
-	{
-		float Physical = 0;
-		float Pyro = 0;
-		float Hydro = 0;
-		float Electro = 0;
-		float Cryo = 0;
-		float Anemo = 0;
-		float Geo = 0;
-	} ResSnapShot;
+	FResSnapShot ResSnapShot;
 
 	ExecParams.AttemptCalculateCapturedAttributeMagnitude(Statics().PhysicalResDef, EvalParams, ResSnapShot.Physical);
 	ExecParams.AttemptCalculateCapturedAttributeMagnitude(Statics().PyroResDef, EvalParams, ResSnapShot.Pyro);
@@ -206,15 +316,7 @@ void UReactionAwareDamageExecution::Execute_Implementation(const FGameplayEffect
 	ExecParams.AttemptCalculateCapturedAttributeMagnitude(Statics().AnemoResDef, EvalParams, ResSnapShot.Anemo);
 	ExecParams.AttemptCalculateCapturedAttributeMagnitude(Statics().GeoResDef, EvalParams, ResSnapShot.Geo);
 
-	struct FAuraSnapshot
-	{
-		float Pyro = 0;
-		float Hydro = 0;
-		float Electro = 0;
-		float Cryo = 0;
-		float Anemo = 0;
-		float Geo = 0;
-	} AuraSnapShot;
+	FAetherAuraMagnitudeSnapshot AuraSnapShot;
 
 
 	ExecParams.AttemptCalculateCapturedAttributeMagnitude(Statics().PyroAuraDef, EvalParams, AuraSnapShot.Pyro);
@@ -227,6 +329,7 @@ void UReactionAwareDamageExecution::Execute_Implementation(const FGameplayEffect
 
 	float BaseDamage = Spec.GetSetByCallerMagnitude(AetherGameplayTags::Data_Damage, false, 0.f);
 	float AuraGauge = Spec.GetSetByCallerMagnitude(AetherGameplayTags::Data_AuraGauge, false, 0.f);
+	const FGameplayTag IncomingElement = GetElementTagFromSpec(Spec);
 
 	float CritRate = 0.0f;
 	float CritDamage = 0.0f;
@@ -237,14 +340,20 @@ void UReactionAwareDamageExecution::Execute_Implementation(const FGameplayEffect
 	float AbilityDamage = 0.7008f;
 	BaseDamage = Atk * AbilityDamage;
 
+	const FAetherElementalReactionResult ReactionResult = FAetherElementalReactionResolver::Resolve(
+		IncomingElement,
+		AuraGauge,
+		EM,
+		AttackerLevel,
+		AuraSnapShot);
 
-	float DamageBonus = 0.0f;
+	float DamageBonus = GetDamageBonusForElement(IncomingElement, DamageBonusSnapShot);
 	float CritMultiplier = FMath::FRand() <= CritRate ? (1.0f + CritDamage) : 1.0f;
-	float ReactionMultiplier = 1.0f;
+	float ReactionMultiplier = ReactionResult.DamageMultiplier;
 	float DefenseMultiplier = (AttackerLevel + 100) / ((DefenderLevel + 100) + (AttackerLevel + 100));
-	float ElementalResistance = 0.0f;
-	ElementalResistance = ElementalResistance < 0.0f ? ElementalResistance / 2.0f : ElementalResistance; 
-	float AdditionalDamage = 0.0f;
+	float ElementalResistance = GetResistanceForElement(IncomingElement, ResSnapShot);
+	float ResistanceMultiplier = CalculateResistanceMultiplier(ElementalResistance);
+	float AdditionalDamage = ReactionResult.AdditionalDamage;
 
 
 	int FinalDamage = 0;
@@ -254,7 +363,7 @@ void UReactionAwareDamageExecution::Execute_Implementation(const FGameplayEffect
 			* CritMultiplier
 			* ReactionMultiplier
 			* DefenseMultiplier
-			* (1 - ElementalResistance)
+			* ResistanceMultiplier
 			+ AdditionalDamage);
 
 
@@ -266,10 +375,12 @@ void UReactionAwareDamageExecution::Execute_Implementation(const FGameplayEffect
 			EGameplayModOp::Additive, FinalDamage));
 	}
 
-	FGameplayAttribute AuraAttr = UAetherBaseAttributeSet::GetPyroAuraAttribute();
-	if (AuraAttr.IsValid())
+	for (const FAetherAuraModifier& AuraModifier : ReactionResult.AuraModifiers)
 	{
-		OutExecOutput.AddOutputModifier(FGameplayModifierEvaluatedData(
-			AuraAttr, EGameplayModOp::Additive, 1.0f));
+		if (AuraModifier.Attribute.IsValid() && !FMath::IsNearlyZero(AuraModifier.Magnitude))
+		{
+			OutExecOutput.AddOutputModifier(FGameplayModifierEvaluatedData(
+				AuraModifier.Attribute, EGameplayModOp::Additive, AuraModifier.Magnitude));
+		}
 	}
 }

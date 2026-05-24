@@ -6,7 +6,7 @@ namespace AetherGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_Jump);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_Move);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_Look);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_SwitchPartySlot1)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_SwitchPartySlot1);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_SwitchPartySlot2);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_SwitchPartySlot3);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_SwitchPartySlot4);
@@ -22,11 +22,17 @@ namespace AetherGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Element_Anemo);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Element_Geo);
 	
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Ability_SwitchPartySlot)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reaction_Vaporize);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reaction_Melt);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reaction_Overloaded);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reaction_ElectroCharged);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reaction_Superconduct);
+
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Ability_SwitchPartySlot);
 	
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_NormalAttack_ComboWindow_Opened)
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_NormalAttack_ComboWindow_Closed)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_NormalAttack_ComboWindow_Opened);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_NormalAttack_ComboWindow_Closed);
 	
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Montage_AttackHit)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Montage_AttackHit);
 	
 }
