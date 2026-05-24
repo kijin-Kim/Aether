@@ -16,6 +16,7 @@ class AETHER_API UAnimNotifyState_AttackTrace : public UAnimNotifyState
 	GENERATED_BODY()
 	
 public:
+	UAnimNotifyState_AttackTrace();
 	virtual void NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference) override;
 	virtual void NotifyTick(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float FrameDeltaTime, const FAnimNotifyEventReference& EventReference) override;
 	virtual void NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
@@ -23,19 +24,19 @@ public:
 	
 private:
 	UPROPERTY(EditAnywhere, Category="Trace")
-	FName StartSocketName = "weapon_start";
+	FName StartSocketName;
 
 	UPROPERTY(EditAnywhere, Category="Trace")
-	FName EndSocketName = "weapon_end";
+	FName EndSocketName;
 
 	UPROPERTY(EditAnywhere, Category="Trace")
-	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Pawn;
+	TEnumAsByte<ECollisionChannel> TraceChannel;
 
 	UPROPERTY(EditAnywhere, Category="Trace")
 	FGameplayTag HitEventTag;
 	
 	UPROPERTY(EditAnywhere, Category="Debug")
-	bool bDrawDebug = false;
+	bool bDrawDebug;
 	
 	
 	struct FTraceState

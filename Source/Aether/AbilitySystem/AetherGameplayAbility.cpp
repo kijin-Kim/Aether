@@ -24,28 +24,20 @@ void UAetherGameplayAbility::OnGiveAbility(const FGameplayAbilityActorInfo* Acto
 	}
 }
 
-void UAetherGameplayAbility::ApplyElementalAttackToTarget(AActor* Target, FGameplayTag ElementTypeTag, float Damage, float Gauge)
+void UAetherGameplayAbility::ApplyElementalAttackToTarget(const FGameplayAbilityTargetDataHandle& TargetDataHandle, FGameplayTag ElementTypeTag, float Damage, float Gauge)
 {
-	if (!Target)
-	{
-		return;
-	}
-	
+
 	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
-	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Target);
-	
+
 	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
 	Context.AddSourceObject(SourceASC->GetAvatarActor());
 	Context.AddInstigator(SourceASC->GetAvatarActor(), SourceASC->GetAvatarActor());
 
 	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(UAetherGameplayEffect_ElementalDamage::StaticClass(), 1.0f, Context);
 	FGameplayEffectSpec* Spec = SpecHandle.Data.Get();
-	
+
 	Spec->SetSetByCallerMagnitude(AetherGameplayTags::Data_Damage, Damage);
 	Spec->SetSetByCallerMagnitude(AetherGameplayTags::Data_AuraGauge, Gauge);
 	Spec->AddDynamicAssetTag(ElementTypeTag);
-
-	FActiveGameplayEffectHandle AppliedHandle = SourceASC->ApplyGameplayEffectSpecToTarget(*Spec, TargetASC);
-
-
+	TArray<FActiveGameplayEffectHandle> SpecHandles = ApplyGameplayEffectSpecToTarget(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), SpecHandle, TargetDataHandle);
 }

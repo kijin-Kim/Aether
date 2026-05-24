@@ -3,48 +3,24 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AbilitySystemInterface.h"
-#include "Aether/AbilitySystem/AetherAbilitySet.h"
-#include "Aether/AbilitySystem/AetherAbilitySystemComponent.h"
+#include "Aether/Character/AetherCharacterBase.h"
 #include "InputActionValue.h"
-#include "Aether/Weapon/WeaponHolder.h"
-#include "GameFramework/Character.h"
 #include "AetherCharacter.generated.h"
 
-class UAetherCharacterData;
-class UAetherHeroAttributeSet;
-class UAetherBaseAttributeSet;
-class UAetherAbilitySystemComponent;
-struct FGameplayTag;
-class UAetherAbilitySet;
-class UAetherInputConfig;
-class UGameplayAbility;
-class UInputAction;
 class UCameraComponent;
 class USpringArmComponent;
-
+class UAetherInputConfig;
+struct FGameplayTag;
 
 UCLASS()
-class AETHER_API AAetherCharacter : public ACharacter, public IAbilitySystemInterface, public IWeaponHolder
+class AETHER_API AAetherCharacter : public AAetherCharacterBase
 {
 	GENERATED_BODY()
 
 public:
 	AAetherCharacter();
-	
-	virtual void OnConstruction(const FTransform& Transform) override;
+
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
-	virtual void PossessedBy(AController* NewController) override;
-	virtual void UnPossessed() override;
-
-	void InitializeFromCharacterData(FName NewCharacterId);
-
-
-	void SetOnField(bool bSetOnField);
-
-	virtual UStaticMeshComponent* GetWeaponMesh() const override { return WeaponMeshComponent;}
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return AetherASC; }
-	UAetherAbilitySystemComponent* GetAetherAbilitySystemComponent() const { return AetherASC; }
 
 private:
 	void AbilityInputPressed(FGameplayTag InputTag);
@@ -54,24 +30,9 @@ private:
 	void Look(const FInputActionValue& InputActionValue);
 
 private:
-	FName CharacterId;
-
-	UPROPERTY()
-	TObjectPtr<UAetherAbilitySystemComponent> AetherASC;
-
-	bool bOnField = true;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USpringArmComponent> SpringArmComponent;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCameraComponent> CameraComponent;
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UStaticMeshComponent> WeaponMeshComponent;
-	UPROPERTY(EditAnywhere)
-	FName WeaponSocketName = NAME_None;
-	
-	FAetherAbilitySet_GrantedHandles GrantedAbilitySetHandles;
-	
-	
 };

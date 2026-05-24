@@ -4,13 +4,24 @@
 #include "AnimNotifyState_AttackTrace.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
+#include "Aether/AetherGameplayTags.h"
 #include "Aether/Weapon/WeaponHolder.h"
+
+UAnimNotifyState_AttackTrace::UAnimNotifyState_AttackTrace()
+	: StartSocketName("weapon_start")
+	  , EndSocketName("weapon_end")
+	  , TraceChannel(ECC_Pawn)
+	  , HitEventTag(AetherGameplayTags::Event_Montage_AttackHit)
+	  , bDrawDebug(false)
+
+{
+}
 
 void UAnimNotifyState_AttackTrace::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference)
 {
 	Super::NotifyBegin(MeshComp, Animation, TotalDuration, EventReference);
 	if (!MeshComp || !MeshComp->GetOwner()) return;
-	
+
 	FTraceState& State = StateMap.FindOrAdd(MeshComp);
 	State.AlreadyHitActors.Empty();
 	State.bInitialized = false;

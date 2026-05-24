@@ -27,7 +27,7 @@ class AETHER_API UAetherGameplayAbility : public UGameplayAbility
 public:
 	UAetherGameplayAbility();
 	virtual void OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
-	void ApplyElementalAttackToTarget(AActor* Target, FGameplayTag ElementTypeTag, float Damage, float Gauge);
+	void ApplyElementalAttackToTarget(const FGameplayAbilityTargetDataHandle& TargetDataHandle, FGameplayTag ElementTypeTag, float Damage, float Gauge);
 
 	EAetherAbilityActivationPolicy GetActivationPolicy() const { return ActivationPolicy; }
 	

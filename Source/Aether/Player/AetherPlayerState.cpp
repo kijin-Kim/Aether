@@ -49,7 +49,8 @@ void AAetherPlayerState::SpawnAndSetupCharacter(const TArray<FName>& CharacterId
 			SpawnTransform = PC->StartSpot->GetActorTransform();
 		}
 
-		if (AAetherCharacter* SpawnedCharacter = World->SpawnActor<AAetherCharacter>(CharacterData->CharacterClass.LoadSynchronous(), SpawnTransform, SpawnParams))
+		if (AAetherCharacter* SpawnedCharacter = World->SpawnActor<AAetherCharacter>(
+			CharacterData->CharacterClass.LoadSynchronous(), SpawnTransform, SpawnParams))
 		{
 			SpawnedCharacter->InitializeFromCharacterData(CharacterId);
 			SpawnedCharacter->SetOnField(false);
@@ -58,7 +59,9 @@ void AAetherPlayerState::SpawnAndSetupCharacter(const TArray<FName>& CharacterId
 		}
 		else
 		{
-			UE_LOG(LogAether, Warning, TEXT("Failed to spawn character for ID: %s"), *CharacterId.ToString());
+			UE_LOG(LogAether, Warning,
+			       TEXT("Failed to spawn player character for ID: %s. " "Check that CharacterClass in DataAsset is AAetherCharacter-derived, "
+				       "not AAetherAICharacter."), *CharacterId.ToString());
 		}
 	}
 
@@ -71,11 +74,11 @@ void AAetherPlayerState::SpawnAndSetupCharacter(const TArray<FName>& CharacterId
 void AAetherPlayerState::AuthSwitchPartySlot(int32 SlotIndex)
 {
 	check(HasAuthority());
-	if (SlotIndex <= INDEX_NONE || SlotIndex >= PartyCharacters.Num())
+
+	if (!PartyCharacters.IsValidIndex(SlotIndex))
 	{
 		return;
 	}
-
 	if (SlotIndex == ActiveSlotIndex)
 	{
 		return;
@@ -87,13 +90,27 @@ void AAetherPlayerState::AuthSwitchPartySlot(int32 SlotIndex)
 		return;
 	}
 
-	if (PartyCharacters.IsValidIndex(SlotIndex) && PartyCharacters[SlotIndex])
+	AAetherCharacter* NewCharacter = PartyCharacters[SlotIndex];
+	if (!NewCharacter)
 	{
-		if (AAetherCharacter* OldCharacter = ActiveSlotIndex != INDEX_NONE ? PartyCharacters[ActiveSlotIndex] : nullptr)
-		{
-			PartyCharacters[SlotIndex]->SetActorTransform(OldCharacter->GetActorTransform());
-		}
-		PC->Possess(PartyCharacters[SlotIndex]);
-		ActiveSlotIndex = SlotIndex;
+		return;
 	}
+
+	AAetherCharacter* OldCharacter = (ActiveSlotIndex != INDEX_NONE) ? PartyCharacters[ActiveSlotIndex] : nullptr;
+
+	if (OldCharacter)
+	{
+		NewCharacter->SetActorTransform(OldCharacter->GetActorTransform());
+	}
+
+	NewCharacter->SetOnField(true);
+
+	PC->Possess(NewCharacter);
+
+	if (OldCharacter)
+	{
+		OldCharacter->SetOnField(false);
+	}
+
+	ActiveSlotIndex = SlotIndex;
 }

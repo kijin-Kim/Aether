@@ -13,6 +13,7 @@
 
 void UAetherGameplayAbility_NormalAttack::OnAttackHit(FGameplayEventData Payload)
 {
+	ApplyElementalAttackToTarget(Payload.TargetData, AetherGameplayTags::Element_Pyro, 1.0f, 1.0f);
 	UE_LOG(LogTemp, Log, TEXT("Attack hit event received! Target: %s"), *Payload.Target->GetName());
 }
 
@@ -68,8 +69,6 @@ void UAetherGameplayAbility_NormalAttack::PlayCombo()
 	WaitInputTask->ReadyForActivation();
 
 	ComboIndex = (ComboIndex + 1) % GroundAttackAnimations.Num();
-	
-	ApplyElementalAttackToTarget(GetAvatarActorFromActorInfo(), AetherGameplayTags::Element_Pyro, 10.0f, 5.0f);
 }
 
 void UAetherGameplayAbility_NormalAttack::OnMontageCompleted()
