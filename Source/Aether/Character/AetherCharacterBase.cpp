@@ -80,4 +80,29 @@ void AAetherCharacterBase::SetOnField(bool bSetOnField)
 	SetActorHiddenInGame(!bOnField);
 	SetActorTickEnabled(bOnField);
 	SetActorEnableCollision(bOnField);
+
+	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
+	{
+		MovementComponent->SetComponentTickEnabled(bOnField);
+		if (bOnField)
+		{
+			MovementComponent->Activate(true);
+		}
+		else
+		{
+			MovementComponent->StopMovementImmediately();
+			MovementComponent->Deactivate();
+		}
+	}
+
+	if (USkeletalMeshComponent* MeshComponent = GetMesh())
+	{
+		MeshComponent->SetComponentTickEnabled(bOnField);
+		MeshComponent->bPauseAnims = !bOnField;
+	}
+
+	if (WeaponMeshComponent)
+	{
+		WeaponMeshComponent->SetComponentTickEnabled(bOnField);
+	}
 }

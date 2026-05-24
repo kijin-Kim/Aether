@@ -3,8 +3,10 @@
 #include "Aether/Aether.h"
 #include "Aether/AetherCharacterDatabase.h"
 #include "Aether/AbilitySystem/AetherCharacterData.h"
+#include "Aether/AbilitySystem/AetherAbilitySystemComponent.h"
 #include "Aether/Character/AetherCharacter.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/World.h"
 
 
@@ -75,42 +77,92 @@ void AAetherPlayerState::AuthSwitchPartySlot(int32 SlotIndex)
 {
 	check(HasAuthority());
 
-	if (!PartyCharacters.IsValidIndex(SlotIndex))
-	{
-		return;
-	}
-	if (SlotIndex == ActiveSlotIndex)
-	{
-		return;
-	}
-
-	APlayerController* PC = GetPlayerController();
-	if (!PC)
+	APlayerController* PC = nullptr;
+	AAetherCharacter* NewCharacter = nullptr;
+	if (!CanSwitchPartySlot(SlotIndex, PC, NewCharacter))
 	{
 		return;
 	}
 
-	AAetherCharacter* NewCharacter = PartyCharacters[SlotIndex];
-	if (!NewCharacter)
-	{
-		return;
-	}
-
-	AAetherCharacter* OldCharacter = (ActiveSlotIndex != INDEX_NONE) ? PartyCharacters[ActiveSlotIndex] : nullptr;
-
-	if (OldCharacter)
-	{
-		NewCharacter->SetActorTransform(OldCharacter->GetActorTransform());
-	}
+	const int32 PreviousSlotIndex = ActiveSlotIndex;
+	AAetherCharacter* OldCharacter = GetActivePartyCharacter();
 
 	NewCharacter->SetOnField(true);
-
-	PC->Possess(NewCharacter);
-
-	if (OldCharacter)
-	{
-		OldCharacter->SetOnField(false);
-	}
+	CopyPartySwapState(OldCharacter, NewCharacter);
+	RefreshPartyControl(PC, OldCharacter, NewCharacter);
 
 	ActiveSlotIndex = SlotIndex;
+	OnActivePartySlotChanged.Broadcast(PreviousSlotIndex, ActiveSlotIndex, OldCharacter, NewCharacter);
+}
+
+AAetherCharacter* AAetherPlayerState::GetActivePartyCharacter() const
+{
+	return PartyCharacters.IsValidIndex(ActiveSlotIndex) ? PartyCharacters[ActiveSlotIndex].Get() : nullptr;
+}
+
+bool AAetherPlayerState::CanSwitchPartySlot(int32 SlotIndex, APlayerController*& OutPlayerController, AAetherCharacter*& OutNewCharacter) const
+{
+	OutPlayerController = nullptr;
+	OutNewCharacter = nullptr;
+
+	if (!PartyCharacters.IsValidIndex(SlotIndex) || SlotIndex == ActiveSlotIndex)
+	{
+		return false;
+	}
+
+	OutPlayerController = GetPlayerController();
+	if (!OutPlayerController)
+	{
+		return false;
+	}
+
+	OutNewCharacter = PartyCharacters[SlotIndex];
+	return OutNewCharacter != nullptr;
+}
+
+void AAetherPlayerState::CopyPartySwapState(const AAetherCharacter* PreviousCharacter, AAetherCharacter* NewCharacter) const
+{
+	if (!PreviousCharacter || !NewCharacter)
+	{
+		return;
+	}
+
+	NewCharacter->SetActorTransform(PreviousCharacter->GetActorTransform(), false, nullptr, ETeleportType::TeleportPhysics);
+
+	const UCharacterMovementComponent* PreviousMovement = PreviousCharacter->GetCharacterMovement();
+	UCharacterMovementComponent* NewMovement = NewCharacter->GetCharacterMovement();
+	if (PreviousMovement && NewMovement)
+	{
+		NewMovement->SetMovementMode(PreviousMovement->MovementMode, PreviousMovement->CustomMovementMode);
+		NewMovement->Velocity = PreviousMovement->Velocity;
+	}
+}
+
+void AAetherPlayerState::RefreshPartyControl(APlayerController* PlayerController, AAetherCharacter* PreviousCharacter, AAetherCharacter* NewCharacter) const
+{
+	if (!PlayerController || !NewCharacter)
+	{
+		return;
+	}
+
+	if (PreviousCharacter)
+	{
+		if (UAetherAbilitySystemComponent* PreviousASC = PreviousCharacter->GetAetherAbilitySystemComponent())
+		{
+			PreviousASC->ClearInputs();
+		}
+	}
+
+	if (UAetherAbilitySystemComponent* NewASC = NewCharacter->GetAetherAbilitySystemComponent())
+	{
+		NewASC->ClearInputs();
+	}
+
+	PlayerController->Possess(NewCharacter);
+	PlayerController->FlushPressedKeys();
+
+	if (PreviousCharacter)
+	{
+		PreviousCharacter->SetOnField(false);
+	}
 }
