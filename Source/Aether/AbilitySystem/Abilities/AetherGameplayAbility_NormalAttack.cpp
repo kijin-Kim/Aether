@@ -13,13 +13,26 @@
 
 void UAetherGameplayAbility_NormalAttack::OnAttackHit(FGameplayEventData Payload)
 {
+	if (Payload.TargetData.Num() == 0)
+	{
+		UE_LOG(LogAether, Verbose, TEXT("NormalAttack hit event ignored: no target data. Target=%s"), *GetNameSafe(Payload.Target));
+		return;
+	}
+
 	ApplyElementalAttackToTarget(Payload.TargetData, AetherGameplayTags::Element_Pyro, 1.0f, 1.0f);
-	UE_LOG(LogTemp, Log, TEXT("Attack hit event received! Target: %s"), *Payload.Target->GetName());
+	UE_LOG(LogAether, Verbose, TEXT("NormalAttack hit event received. Target=%s"), *GetNameSafe(Payload.Target));
 }
 
 void UAetherGameplayAbility_NormalAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+
+	if (!HasValidComboData())
+	{
+		UE_LOG(LogAether, Warning, TEXT("NormalAttack activation failed: no valid montage data."));
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
 
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
@@ -46,12 +59,24 @@ void UAetherGameplayAbility_NormalAttack::EndAbility(const FGameplayAbilitySpecH
 
 void UAetherGameplayAbility_NormalAttack::PlayCombo()
 {
-	check(GroundAttackAnimations.IsValidIndex(ComboIndex));
+	if (!GroundAttackAnimations.IsValidIndex(ComboIndex) || !GroundAttackAnimations[ComboIndex])
+	{
+		UE_LOG(LogAether, Warning, TEXT("NormalAttack combo stopped: invalid montage at index %d."), ComboIndex);
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+		return;
+	}
 
 	bComboWindowOpened = false;
 	bInputBuffered = false;
 
 	UAbilityTask_PlayMontageAndWait* PlayMontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, GroundAttackAnimations[ComboIndex]);
+	if (!PlayMontageTask)
+	{
+		UE_LOG(LogAether, Warning, TEXT("NormalAttack combo stopped: failed to create montage task."));
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+		return;
+	}
+
 	PlayMontageTask->OnCompleted.AddDynamic(this, &UAetherGameplayAbility_NormalAttack::OnMontageCompleted);
 	PlayMontageTask->OnCancelled.AddDynamic(this, &UAetherGameplayAbility_NormalAttack::OnMontageCancelled);
 	PlayMontageTask->ReadyForActivation();
@@ -69,6 +94,24 @@ void UAetherGameplayAbility_NormalAttack::PlayCombo()
 	WaitInputTask->ReadyForActivation();
 
 	ComboIndex = (ComboIndex + 1) % GroundAttackAnimations.Num();
+}
+
+bool UAetherGameplayAbility_NormalAttack::HasValidComboData() const
+{
+	if (GroundAttackAnimations.IsEmpty())
+	{
+		return false;
+	}
+
+	for (const TObjectPtr<UAnimMontage>& Montage : GroundAttackAnimations)
+	{
+		if (!Montage)
+		{
+			return false;
+		}
+	}
+
+	return true;
 }
 
 void UAetherGameplayAbility_NormalAttack::OnMontageCompleted()

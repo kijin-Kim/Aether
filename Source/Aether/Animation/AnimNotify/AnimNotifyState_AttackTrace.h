@@ -32,6 +32,9 @@ private:
 	UPROPERTY(EditAnywhere, Category="Trace")
 	TEnumAsByte<ECollisionChannel> TraceChannel;
 
+	UPROPERTY(EditAnywhere, Category="Trace", meta=(ClampMin="1.0"))
+	float TraceRadius;
+
 	UPROPERTY(EditAnywhere, Category="Trace")
 	FGameplayTag HitEventTag;
 	

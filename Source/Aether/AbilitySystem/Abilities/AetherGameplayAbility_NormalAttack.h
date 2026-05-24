@@ -50,6 +50,8 @@ private:
 	UFUNCTION()
 	void OnInputPressedEvent(float TimeWaited);
 
+	bool HasValidComboData() const;
+
 private:
 	UPROPERTY(EditDefaultsOnly, Category = "Aether|Animation")
 	TArray<TObjectPtr<UAnimMontage>> GroundAttackAnimations;
