@@ -1,33 +1,39 @@
 # Project Aether
 
-원소 반응 기반 오픈월드 액션 RPG. 원신의 핵심 재미 요소를 언리얼 엔진으로 재해석한다.
+Project Aether는 Unreal Engine 5로 제작하는 싱글플레이 오픈월드 파티 액션 RPG 포트폴리오입니다.
+
+플레이어는 각기 다른 전투 역할과 원소 속성을 가진 캐릭터들을 전환하며 탐험하고, 적에게 원소를 부착한 뒤 조합 반응을 일으켜 전투 흐름을 만드는 경험을 목표로 합니다.
 
 ---
 
-## 핵심 기술
+## Game Concept
 
-1. 오픈월드 (World Partition)
-2. 원소 전투 시스템 (GAS)
-3. AI (StateTree·BT·SmartObject)
-4. 퀘스트 시스템
-5. UI 시스템 (최적화)
+| 항목 | 내용 |
+|------|------|
+| 장르 | 오픈월드 파티 액션 RPG |
+| 플레이 핵심 | 탐험, 파티 전환, 원소 조합, 보스 전투, 성장 보상 |
+| 목표 경험 | 짧은 이동 루트 안에서 캐릭터 전환과 원소 반응이 자연스럽게 이어지는 전투 경험 |
+| 데모 형태 | 60~90초 분량의 vertical slice |
 
+---
 
-## 핵심 재미 루프
+## Core Loop
 
-```
-탐험 발견 → 원소 전투(GAS 콤보) → 성장(캐릭터·장비) → 더 깊은 탐험
+```text
+탐험
+-> 적 조우
+-> 파티 전환
+-> 원소 부착
+-> 원소 반응
+-> 보스 패턴 변화
+-> 보상과 HUD 갱신
 ```
 
 ---
 
-## 상세 문서
+## Portfolio Highlights
 
-| # | 섹션 | 링크 |
-|---|------|------|
-| 1 | 오픈월드 & 탐험 | [docs/open_world.md](docs/open_world.md) |
-| 2 | 캐릭터 행동 및 파티 시스템 | [docs/character_system.md](docs/character_system.md) |
-| 3 | 원소 시스템 | [docs/element_system.md](docs/element_system.md) |
-| 4 | AI 시스템 | [docs/ai_system.md](docs/ai_system.md) |
-| 5 | 퀘스트 시스템 | [docs/quest_system.md](docs/quest_system.md) |
-| 6 | UI 시스템 | [docs/ui_system.md](docs/ui_system.md) |
+| 어필 포인트 | 짧은 설명 | 상세 문서 |
+|-------------|----------|----------|
+| 캐릭터별 ASC 기반 파티 전환 | 캐릭터별 쿨다운, 에너지, 상태 태그를 유지하면서 입력, 이동, 카메라, HUD 흐름이 끊기지 않는 전환 구조를 설계합니다. | [Character & Party](docs/portfolio/character_party.md) |
+| 데이터 기반 원소 반응 파이프라인 | 원소 부착, 반응 판정, 피해 계산, 후속 이벤트를 분리해 확장 가능한 전투 규칙을 구성합니다. | [Element Reaction](docs/portfolio/element_reaction.md) |

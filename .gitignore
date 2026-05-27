@@ -21,3 +21,9 @@ DerivedDataCache/
 # --- 에셋 제외 (소스만 올릴 경우) ---
 # Content 폴더 전체를 제외하여 용량을 줄입니다.
 /Content/
+
+# --- 공개 제출 제외 문서 ---
+docs/_internal/
+docs_internal/
+docs/reference/
+docs/portfolio/demo_loop.md
