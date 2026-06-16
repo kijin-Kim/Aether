@@ -10,7 +10,7 @@
 
 UAetherGameplayAbility::UAetherGameplayAbility()
 	: ActivationPolicy(EAetherAbilityActivationPolicy::OnInputTriggered)
-
+	, SwapPolicy(EAetherAbilitySwapPolicy::Cancel)
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 }

@@ -72,6 +72,9 @@ void AAetherCharacterBase::InitializeFromCharacterData(FName NewCharacterId)
 	{
 		GetMesh()->SetAnimInstanceClass(CharacterData->AnimInstanceClass.LoadSynchronous());
 	}
+	
+	
+	AetherASC->GivePartySwitchAbility();
 }
 
 void AAetherCharacterBase::SetOnField(bool bSetOnField)

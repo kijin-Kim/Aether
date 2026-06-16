@@ -4,6 +4,8 @@
 #include "AetherAbilitySystemComponent.h"
 
 #include "AetherGameplayAbility.h"
+#include "Abilities/AetherGameplayAbility_SwitchPartySlot.h"
+#include "Aether/AetherGameplayTags.h"
 
 
 void UAetherAbilitySystemComponent::ProcessInputs()
@@ -70,6 +72,48 @@ void UAetherAbilitySystemComponent::ClearInputs()
 	InputPressedSpecHandles.Reset();
 	InputRepeatSpecHandle.Reset();
 	InputReleasedSpecHandles.Reset();
+}
+
+bool UAetherAbilitySystemComponent::HasActiveAbilityWithSwapPolicy(EAetherAbilitySwapPolicy SwapPolicy) const
+{
+	for (const FGameplayAbilitySpec& AbilitySpec : ActivatableAbilities.Items)
+	{
+		if (!AbilitySpec.IsActive())
+		{
+			continue;
+		}
+
+		const UAetherGameplayAbility* AetherAbility = Cast<UAetherGameplayAbility>(AbilitySpec.Ability);
+		if (AetherAbility && AetherAbility->GetSwapPolicy() == SwapPolicy)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void UAetherAbilitySystemComponent::CancelActiveAbilitiesWithSwapPolicy(EAetherAbilitySwapPolicy SwapPolicy)
+{
+	TArray<FGameplayAbilitySpecHandle> HandlesToCancel;
+	for (const FGameplayAbilitySpec& AbilitySpec : ActivatableAbilities.Items)
+	{
+		if (!AbilitySpec.IsActive())
+		{
+			continue;
+		}
+
+		const UAetherGameplayAbility* AetherAbility = Cast<UAetherGameplayAbility>(AbilitySpec.Ability);
+		if (AetherAbility && AetherAbility->GetSwapPolicy() == SwapPolicy)
+		{
+			HandlesToCancel.Add(AbilitySpec.Handle);
+		}
+	}
+
+	for (const FGameplayAbilitySpecHandle& Handle : HandlesToCancel)
+	{
+		CancelAbilityHandle(Handle);
+	}
 }
 
 void UAetherAbilitySystemComponent::InitAbilityActorInfo(AActor* InOwnerActor, AActor* InAvatarActor)
@@ -143,5 +187,15 @@ void UAetherAbilitySystemComponent::AbilitySpecInputReleased(FGameplayAbilitySpe
 			// InstancedPerExecution은 입력 이벤트가 왔을 때, 어떤 인스턴스에 이벤트를 전달해야 하는지 논리적으로 애매함
 			InvokeReplicatedEvent(EAbilityGenericReplicatedEvent::InputReleased, Spec.Handle, PredictionKey);
 		}
+	}
+}
+
+void UAetherAbilitySystemComponent::GivePartySwitchAbility()
+{
+	for (const FGameplayTag& PartySwitchTag : AetherGameplayTags::GetPartySwitchTags())
+	{
+		FGameplayAbilitySpec NewSpec(UAetherGameplayAbility_SwitchPartySlot::StaticClass());
+		NewSpec.GetDynamicSpecSourceTags().AddTag(PartySwitchTag);
+		GiveAbility(NewSpec);
 	}
 }

@@ -15,6 +15,14 @@ enum class EAetherAbilityActivationPolicy : uint8
 	OnGranted
 };
 
+UENUM(BlueprintType)
+enum class EAetherAbilitySwapPolicy : uint8
+{
+	Cancel,
+	AllowOffField,
+	Block
+};
+
 /**
  * 
  */
@@ -30,9 +38,12 @@ public:
 	void ApplyElementalAttackToTarget(const FGameplayAbilityTargetDataHandle& TargetDataHandle, FGameplayTag ElementTypeTag, float Damage, float Gauge);
 
 	EAetherAbilityActivationPolicy GetActivationPolicy() const { return ActivationPolicy; }
+	EAetherAbilitySwapPolicy GetSwapPolicy() const { return SwapPolicy; }
 	
-
-private:
+protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Aether|Ability Activation")
 	EAetherAbilityActivationPolicy ActivationPolicy;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Aether|Party")
+	EAetherAbilitySwapPolicy SwapPolicy;
 };

@@ -50,6 +50,7 @@ private:
 	UFUNCTION()
 	void OnInputPressedEvent(float TimeWaited);
 
+	// 일반공격 콤보에 필요한 데이터가 있는지 확인하는 함수
 	bool HasValidComboData() const;
 
 private:

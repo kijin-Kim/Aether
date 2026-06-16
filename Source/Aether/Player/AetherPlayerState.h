@@ -8,6 +8,7 @@
 
 class AAetherCharacter;
 class APlayerController;
+class UAetherPartyComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(
 	FAetherActivePartySlotChangedDelegate,
@@ -28,7 +29,7 @@ class AETHER_API AAetherPlayerState : public APlayerState
 public:
 	virtual void BeginPlay() override;
 	void SpawnAndSetupCharacter(const TArray<FName>& CharacterIds);
-	void AuthSwitchPartySlot(int32 SlotIndex);
+	void SwitchPartySlot(int32 SlotIndex);
 
 	UFUNCTION(BlueprintPure, Category = "Aether|Party")
 	AAetherCharacter* GetActivePartyCharacter() const;
@@ -37,13 +38,8 @@ public:
 	FAetherActivePartySlotChangedDelegate OnActivePartySlotChanged;
 
 private:
-	bool CanSwitchPartySlot(int32 SlotIndex, APlayerController*& OutPlayerController, AAetherCharacter*& OutNewCharacter) const;
-	void CopyPartySwapState(const AAetherCharacter* PreviousCharacter, AAetherCharacter* NewCharacter) const;
-	void RefreshPartyControl(APlayerController* PlayerController, AAetherCharacter* PreviousCharacter, AAetherCharacter* NewCharacter) const;
+	UFUNCTION()
+	void HandleActivePartySlotChanged(int32 PreviousSlotIndex, int32 NewSlotIndex, AAetherCharacter* PreviousCharacter, AAetherCharacter* NewCharacter);
 
-	UPROPERTY()
-	TArray<TObjectPtr<AAetherCharacter>> PartyCharacters;
-
-	UPROPERTY()
-	int32 ActiveSlotIndex = INDEX_NONE;
+	UAetherPartyComponent* GetPartyComponent() const;
 };

@@ -3,14 +3,15 @@
 
 #include "AetherPlayerController.h"
 
-#include "AbilitySystemComponent.h"
 #include "Aether/AbilitySystem/AetherAbilitySystemComponent.h"
 #include "Aether/Character/AetherCharacter.h"
-#include "AetherPlayerState.h"
+#include "AetherPartyComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "Aether/Aether.h"
-#include "Aether/AetherCharacterDatabase.h"
-#include "GameFramework/PlayerState.h"
+
+AAetherPlayerController::AAetherPlayerController()
+{
+	PartyComponent = CreateDefaultSubobject<UAetherPartyComponent>("PartyComponent");
+}
 
 void AAetherPlayerController::BeginPlay()
 {
@@ -23,7 +24,6 @@ void AAetherPlayerController::BeginPlay()
 	}
 
 }
-
 
 void AAetherPlayerController::PostProcessInput(const float DeltaTime, const bool bGamePaused)
 {

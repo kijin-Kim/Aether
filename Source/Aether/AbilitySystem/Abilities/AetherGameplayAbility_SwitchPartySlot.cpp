@@ -5,39 +5,52 @@
 
 #include "AbilitySystemComponent.h"
 #include "Aether/AetherGameplayTags.h"
-#include "Aether/Player/AetherPlayerState.h"
+#include "Aether/AbilitySystem/AetherAbilitySystemComponent.h"
+#include "Aether/Character/AetherCharacter.h"
+#include "Aether/Player/AetherPartyComponent.h"
+#include "Aether/Player/AetherPlayerController.h"
 
 
-UAetherGameplayAbility_SwitchPartySlotBase::UAetherGameplayAbility_SwitchPartySlotBase()
+UAetherGameplayAbility_SwitchPartySlot::UAetherGameplayAbility_SwitchPartySlot()
 {
 	ActivationBlockedTags.AddTag(AetherGameplayTags::Cooldown_Ability_SwitchPartySlot);
-	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
+	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalOnly;
+	SwapPolicy = EAetherAbilitySwapPolicy::AllowOffField;
 }
 
-void UAetherGameplayAbility_SwitchPartySlotBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
+void UAetherGameplayAbility_SwitchPartySlot::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo,
+                                                           const FGameplayAbilitySpec& Spec)
+{
+	Super::OnGiveAbility(ActorInfo, Spec);
+	const FGameplayTag InputTag = Spec.GetDynamicSpecSourceTags().GetByIndex(0);
+	TargetSlotIndex = AetherGameplayTags::GetPartyIndexFromInputTag(InputTag);
+}
+
+void UAetherGameplayAbility_SwitchPartySlot::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
+                                                             const FGameplayAbilityActorInfo* ActorInfo,
+                                                             const FGameplayAbilityActivationInfo ActivationInfo,
+                                                             const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
-	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	if (!CommitCheck(Handle, ActorInfo, ActivationInfo))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
 
-	if (!HasAuthority(&ActivationInfo))
+	bool bSwitched = false;
+	if (AController* Controller = ActorInfo ? ActorInfo->PlayerController.Get() : nullptr)
 	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
-		return;
-	}
-
-	if (APawn* AvatarPawn = Cast<APawn>(ActorInfo->AvatarActor.Get()))
-	{
-		if (AAetherPlayerState* AetherASC = AvatarPawn->GetPlayerState<AAetherPlayerState>())
+		if (AAetherPlayerController* AetherPlayerController = Cast<AAetherPlayerController>(Controller))
 		{
-			AetherASC->AuthSwitchPartySlot(TargetSlotIndex);
-			EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+			if (UAetherPartyComponent* PartyComponent = AetherPlayerController->GetPartyComponent())
+			{
+				bSwitched = PartyComponent->RequestSwitchPartySlot(TargetSlotIndex);
+			}
 		}
 	}
-	
-	GetAbilitySystemComponentFromActorInfo()->ApplyGameplayEffectToSelf(SharedCooldownEffect.GetDefaultObject(), 1.0f, GetAbilitySystemComponentFromActorInfo()->MakeEffectContext());
+
+	const bool bCommitted = bSwitched && CommitAbility(Handle, ActorInfo, ActivationInfo);
+	EndAbility(Handle, ActorInfo, ActivationInfo, true, !bCommitted);
 }

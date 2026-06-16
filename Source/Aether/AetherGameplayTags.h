@@ -35,4 +35,37 @@ namespace AetherGameplayTags
 	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Montage_AttackHit);
 	
+	
+	
+	
+	
+	inline const TArray<FGameplayTag>& GetPartySwitchTags()
+	{
+		static const TArray<FGameplayTag> Tags = {
+			AetherGameplayTags::InputTag_SwitchPartySlot1,
+			AetherGameplayTags::InputTag_SwitchPartySlot2,
+			AetherGameplayTags::InputTag_SwitchPartySlot3,
+			AetherGameplayTags::InputTag_SwitchPartySlot4,
+		};
+
+		return Tags;
+	}
+
+	inline int32 GetPartyIndexFromInputTag(const FGameplayTag& InputTag)
+	{
+		return GetPartySwitchTags().IndexOfByKey(InputTag);
+	}
+
+	inline FGameplayTag GetInputTagFromPartyIndex(int32 PartyIndex)
+	{
+		const TArray<FGameplayTag>& Tags = GetPartySwitchTags();
+
+		if (!Tags.IsValidIndex(PartyIndex))
+		{
+			return FGameplayTag::EmptyTag;
+		}
+
+		return Tags[PartyIndex];
+	}
+	
 }
