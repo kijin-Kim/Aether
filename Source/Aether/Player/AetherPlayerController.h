@@ -3,11 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+#include "InputActionValue.h"
 #include "GameFramework/PlayerController.h"
 #include "AetherPlayerController.generated.h"
 
+class UAetherInputConfig;
 class UInputMappingContext;
-class UAetherPartyComponent;
 /**
  * 
  */
@@ -15,21 +17,23 @@ UCLASS()
 class AETHER_API AAetherPlayerController : public APlayerController
 {
 	GENERATED_BODY()
-	
-public:
-	AAetherPlayerController();
 
+public:
 	virtual void BeginPlay() override;
+	virtual void SetupInputComponent() override;
 	virtual void PostProcessInput(const float DeltaTime, const bool bGamePaused) override;
 
-	UAetherPartyComponent* GetPartyComponent() const { return PartyComponent; }
-	
+	void AbilityInputPressed(FGameplayTag InputTag);
+	void AbilityInputReleased(FGameplayTag InputTag);
+	void Move(const FInputActionValue& InputActionValue);
+	void Look(const FInputActionValue& InputActionValue);
+
+
 private:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Aether|Party", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UAetherPartyComponent> PartyComponent;
+	
 
 	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputMappingContext> DefaultInputMappingContext;
-	
-	
+	UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UAetherInputConfig> DefaultInputConfig;
 };

@@ -5,6 +5,7 @@
 
 #include "AetherGameplayAbility.h"
 #include "Abilities/AetherGameplayAbility_SwitchPartySlot.h"
+#include "Aether/Aether.h"
 #include "Aether/AetherGameplayTags.h"
 
 
@@ -33,13 +34,13 @@ void UAetherAbilitySystemComponent::ProcessInputs()
 		}
 	}
 
-	for (const FGameplayAbilitySpecHandle& SpecHandle : InputRepeatSpecHandle)
+	for (const FGameplayAbilitySpecHandle& SpecHandle : InputHeldSpecHandles)
 	{
 		FGameplayAbilitySpec* AbilitySpec = FindAbilitySpecFromHandle(SpecHandle);
 		if (AbilitySpec && AbilitySpec->Ability && !AbilitySpec->IsActive())
 		{
 			const UAetherGameplayAbility* Ability = Cast<UAetherGameplayAbility>(AbilitySpec->Ability);
-			if (Ability && Ability->GetActivationPolicy() == EAetherAbilityActivationPolicy::OnInputRepeat)
+			if (Ability && Ability->GetActivationPolicy() == EAetherAbilityActivationPolicy::OnInputHeld)
 			{
 				AbilitiesToActivate.AddUnique(AbilitySpec->Handle);
 			}
@@ -48,7 +49,11 @@ void UAetherAbilitySystemComponent::ProcessInputs()
 
 	for (const FGameplayAbilitySpecHandle& AbilitySpecHandle : AbilitiesToActivate)
 	{
-		TryActivateAbility(AbilitySpecHandle);
+		bool bResult = TryActivateAbility(AbilitySpecHandle);
+		if (bResult)
+		{
+			UE_LOG(LogAether, Log, TEXT("ProcessInputs: Ability Activated: %s"), *GetNameSafe(FindAbilitySpecFromHandle(AbilitySpecHandle)->Ability));
+		}
 	}
 
 	for (const FGameplayAbilitySpecHandle& SpecHandle : InputReleasedSpecHandles)
@@ -64,14 +69,20 @@ void UAetherAbilitySystemComponent::ProcessInputs()
 		}
 	}
 
-	ClearInputs();
+	ClearAbilityInputs();
 }
 
-void UAetherAbilitySystemComponent::ClearInputs()
+void UAetherAbilitySystemComponent::ClearAbilityInputs()
 {
 	InputPressedSpecHandles.Reset();
-	InputRepeatSpecHandle.Reset();
 	InputReleasedSpecHandles.Reset();
+}
+
+void UAetherAbilitySystemComponent::ClearAllAbilityInputs()
+{
+	InputPressedSpecHandles.Reset();
+	InputReleasedSpecHandles.Reset();
+	InputHeldSpecHandles.Reset();
 }
 
 bool UAetherAbilitySystemComponent::HasActiveAbilityWithSwapPolicy(EAetherAbilitySwapPolicy SwapPolicy) const
@@ -119,7 +130,7 @@ void UAetherAbilitySystemComponent::CancelActiveAbilitiesWithSwapPolicy(EAetherA
 void UAetherAbilitySystemComponent::InitAbilityActorInfo(AActor* InOwnerActor, AActor* InAvatarActor)
 {
 	Super::InitAbilityActorInfo(InOwnerActor, InAvatarActor);
-	ClearInputs();
+	ClearAllAbilityInputs();
 }
 
 void UAetherAbilitySystemComponent::AbilityInputPressed(const FGameplayTag& InputTag)
@@ -131,7 +142,7 @@ void UAetherAbilitySystemComponent::AbilityInputPressed(const FGameplayTag& Inpu
 			if (AbilitySpec.GetDynamicSpecSourceTags().HasTagExact(InputTag))
 			{
 				InputPressedSpecHandles.AddUnique(AbilitySpec.Handle);
-				InputRepeatSpecHandle.AddUnique(AbilitySpec.Handle);
+				InputHeldSpecHandles.AddUnique(AbilitySpec.Handle);
 			}
 		}
 	}
@@ -146,7 +157,7 @@ void UAetherAbilitySystemComponent::AbilityInputReleased(const FGameplayTag& Inp
 			if (AbilitySpec.GetDynamicSpecSourceTags().HasTagExact(InputTag))
 			{
 				InputReleasedSpecHandles.AddUnique(AbilitySpec.Handle);
-				InputRepeatSpecHandle.Remove(AbilitySpec.Handle);
+				InputHeldSpecHandles.Remove(AbilitySpec.Handle);
 			}
 		}
 	}
@@ -187,15 +198,5 @@ void UAetherAbilitySystemComponent::AbilitySpecInputReleased(FGameplayAbilitySpe
 			// InstancedPerExecution은 입력 이벤트가 왔을 때, 어떤 인스턴스에 이벤트를 전달해야 하는지 논리적으로 애매함
 			InvokeReplicatedEvent(EAbilityGenericReplicatedEvent::InputReleased, Spec.Handle, PredictionKey);
 		}
-	}
-}
-
-void UAetherAbilitySystemComponent::GivePartySwitchAbility()
-{
-	for (const FGameplayTag& PartySwitchTag : AetherGameplayTags::GetPartySwitchTags())
-	{
-		FGameplayAbilitySpec NewSpec(UAetherGameplayAbility_SwitchPartySlot::StaticClass());
-		NewSpec.GetDynamicSpecSourceTags().AddTag(PartySwitchTag);
-		GiveAbility(NewSpec);
 	}
 }

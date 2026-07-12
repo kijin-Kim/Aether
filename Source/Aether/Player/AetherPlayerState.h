@@ -2,44 +2,45 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Aether/PartySystem/AetherPartyAbilitySystemInterface.h"
 #include "GameFramework/PlayerState.h"
 
 #include "AetherPlayerState.generated.h"
 
+class UAetherPartyAttributeSet;
+class UAetherAbilitySystemComponent;
+class UAetherPartyComponent;
 class AAetherCharacter;
 class APlayerController;
-class UAetherPartyComponent;
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(
-	FAetherActivePartySlotChangedDelegate,
-	int32, PreviousSlotIndex,
-	int32, NewSlotIndex,
-	AAetherCharacter*, PreviousCharacter,
-	AAetherCharacter*, NewCharacter);
-
 /**
  *
  *
  */
 UCLASS()
-class AETHER_API AAetherPlayerState : public APlayerState
+class AETHER_API AAetherPlayerState : public APlayerState, public IAetherPartyAbilitySystemInterface
 {
 	GENERATED_BODY()
 
 public:
-	virtual void BeginPlay() override;
-	void SpawnAndSetupCharacter(const TArray<FName>& CharacterIds);
-	void SwitchPartySlot(int32 SlotIndex);
-
-	UFUNCTION(BlueprintPure, Category = "Aether|Party")
-	AAetherCharacter* GetActivePartyCharacter() const;
-
-	UPROPERTY(BlueprintAssignable, Category = "Aether|Party")
-	FAetherActivePartySlotChangedDelegate OnActivePartySlotChanged;
-
+	AAetherPlayerState();
+	
+	void ProcessInputs();
+	virtual void DisplayDebug(class UCanvas* Canvas, const class FDebugDisplayInfo& DebugDisplay, float& YL, float& YPos) override;
+	
+	
+	UAetherAbilitySystemComponent* GetPartyASC() const { return PartyASC; }
+	UAetherPartyComponent* GetPartyComponent() const { return PartyComponent; }
+	
+	virtual UAetherAbilitySystemComponent* GetPartyAbilitySystemComponent() const override { return PartyASC; }
+	virtual UAetherAbilitySystemComponent* GetActiveAbilitySystemComponent() const override;
+	
+	
 private:
-	UFUNCTION()
-	void HandleActivePartySlotChanged(int32 PreviousSlotIndex, int32 NewSlotIndex, AAetherCharacter* PreviousCharacter, AAetherCharacter* NewCharacter);
-
-	UAetherPartyComponent* GetPartyComponent() const;
+	UPROPERTY()
+	TObjectPtr<UAetherAbilitySystemComponent> PartyASC;
+	UPROPERTY()
+	TObjectPtr<UAetherPartyAttributeSet> PartyAttributeSet;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Party", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UAetherPartyComponent> PartyComponent;
+	
 };

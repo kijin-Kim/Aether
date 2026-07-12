@@ -107,9 +107,6 @@ void UAetherCharacterDatabase::LoadCharacterDataAsync(const TArray<FName>& Chara
 
 		if (!Data->AnimInstanceClass.IsNull())
 			PathsToLoad.Add(Data->AnimInstanceClass.ToSoftObjectPath());
-
-		if (!Data->CharacterClass.IsNull())
-			PathsToLoad.Add(Data->CharacterClass.ToSoftObjectPath());
 	}
 
 	// 로드할 에셋이 하나도 없다면(이미 다 로드되었거나 빈 파티인 경우) 

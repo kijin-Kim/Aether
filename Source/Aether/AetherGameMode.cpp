@@ -6,5 +6,4 @@
 #include "Aether.h"
 #include "AetherCharacterDatabase.h"
 #include "AbilitySystem/AetherCharacterData.h"
-#include "Character/AetherCharacter.h"
 

@@ -11,7 +11,7 @@ UENUM(BlueprintType)
 enum class EAetherAbilityActivationPolicy : uint8
 {
 	OnInputTriggered,
-	OnInputRepeat,
+	OnInputHeld,
 	OnGranted
 };
 

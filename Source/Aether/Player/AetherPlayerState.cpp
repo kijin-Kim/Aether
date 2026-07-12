@@ -1,60 +1,43 @@
 #include "AetherPlayerState.h"
 
-#include "Aether/Aether.h"
-#include "Aether/Character/AetherCharacter.h"
-#include "AetherPartyComponent.h"
-#include "AetherPlayerController.h"
+#include "DisplayDebugHelpers.h"
+#include "Aether/AbilitySystem/AetherAbilitySystemComponent.h"
+#include "Aether/AbilitySystem/AttributeSet/AetherPartyAttributeSet.h"
+#include "Aether/PartySystem/AetherPartyComponent.h"
 #include "GameFramework/PlayerController.h"
 
 
-void AAetherPlayerState::BeginPlay()
+AAetherPlayerState::AAetherPlayerState()
 {
-	Super::BeginPlay();
+	PartyASC = CreateDefaultSubobject<UAetherAbilitySystemComponent>(TEXT("PartyASC"));
+	PartyAttributeSet = CreateDefaultSubobject<UAetherPartyAttributeSet>(TEXT("PartyAttributeSet"));
+	PartyComponent = CreateDefaultSubobject<UAetherPartyComponent>(TEXT("PartyComponent"));
+}
 
-	if (UAetherPartyComponent* PartyComponent = GetPartyComponent())
+void AAetherPlayerState::ProcessInputs()
+{
+	PartyASC->ProcessInputs();
+	UAetherAbilitySystemComponent* ActiveASC = GetActiveAbilitySystemComponent();
+	if (ActiveASC)
 	{
-		PartyComponent->OnActivePartySlotChanged.AddUniqueDynamic(this, &AAetherPlayerState::HandleActivePartySlotChanged);
+		ActiveASC->ProcessInputs();
 	}
 }
 
-void AAetherPlayerState::SpawnAndSetupCharacter(const TArray<FName>& CharacterIds)
+void AAetherPlayerState::DisplayDebug(class UCanvas* Canvas, const class FDebugDisplayInfo& DebugDisplay, float& YL,
+                                      float& YPos)
 {
-	if (UAetherPartyComponent* PartyComponent = GetPartyComponent())
+	Super::DisplayDebug(Canvas, DebugDisplay, YL, YPos);
+
+	if (DebugDisplay.IsDisplayOn(TEXT("AbilitySystem")))
 	{
-		PartyComponent->InitializeParty(CharacterIds);
+		GetPartyAbilitySystemComponent()->DisplayDebug(Canvas, DebugDisplay, YL, YPos);
+		GetActiveAbilitySystemComponent()->DisplayDebug(Canvas, DebugDisplay, YL, YPos);
 	}
 }
 
-void AAetherPlayerState::SwitchPartySlot(int32 SlotIndex)
+
+UAetherAbilitySystemComponent* AAetherPlayerState::GetActiveAbilitySystemComponent() const
 {
-	if (UAetherPartyComponent* PartyComponent = GetPartyComponent())
-	{
-		PartyComponent->RequestSwitchPartySlot(SlotIndex);
-	}
-}
-
-AAetherCharacter* AAetherPlayerState::GetActivePartyCharacter() const
-{
-	if (const UAetherPartyComponent* PartyComponent = GetPartyComponent())
-	{
-		return PartyComponent->GetActivePartyCharacter();
-	}
-
-	return nullptr;
-}
-
-void AAetherPlayerState::HandleActivePartySlotChanged(int32 PreviousSlotIndex, int32 NewSlotIndex, AAetherCharacter* PreviousCharacter, AAetherCharacter* NewCharacter)
-{
-	OnActivePartySlotChanged.Broadcast(PreviousSlotIndex, NewSlotIndex, PreviousCharacter, NewCharacter);
-}
-
-UAetherPartyComponent* AAetherPlayerState::GetPartyComponent() const
-{
-	const AAetherPlayerController* AetherPlayerController = Cast<AAetherPlayerController>(GetPlayerController());
-	if (!AetherPlayerController)
-	{
-		return nullptr;
-	}
-
-	return AetherPlayerController->GetPartyComponent();
+	return PartyComponent->GetActiveAbilitySystemComponent();
 }

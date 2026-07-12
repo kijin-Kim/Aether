@@ -15,7 +15,8 @@ class AETHER_API UAetherAbilitySystemComponent : public UAbilitySystemComponent
 
 public:
 	void ProcessInputs();
-	void ClearInputs();
+	void ClearAbilityInputs();
+	void ClearAllAbilityInputs();
 	bool HasActiveAbilityWithSwapPolicy(EAetherAbilitySwapPolicy SwapPolicy) const;
 	void CancelActiveAbilitiesWithSwapPolicy(EAetherAbilitySwapPolicy SwapPolicy);
 	virtual void InitAbilityActorInfo(AActor* InOwnerActor, AActor* InAvatarActor) override;
@@ -24,11 +25,10 @@ public:
 	
 	virtual void AbilitySpecInputPressed(FGameplayAbilitySpec& Spec) override;
 	virtual void AbilitySpecInputReleased(FGameplayAbilitySpec& Spec) override;
-	
-	void GivePartySwitchAbility();
+
 	
 private:
 	TArray<FGameplayAbilitySpecHandle> InputPressedSpecHandles;
-	TArray<FGameplayAbilitySpecHandle> InputRepeatSpecHandle;
+	TArray<FGameplayAbilitySpecHandle> InputHeldSpecHandles;
 	TArray<FGameplayAbilitySpecHandle> InputReleasedSpecHandles;
 };
