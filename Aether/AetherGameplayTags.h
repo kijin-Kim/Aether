@@ -1,0 +1,76 @@
+#pragma once
+#include "NativeGameplayTags.h"
+
+namespace AetherGameplayTags
+{
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_Jump);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_Move);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_Look);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_SwitchPartySlot1);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_SwitchPartySlot2);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_SwitchPartySlot3);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_SwitchPartySlot4);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_NormalAttack);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_UI_PartySetup);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Data_Damage);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Data_AuraGauge);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Element_Pyro);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Element_Hydro);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Element_Electro);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Element_Cryo);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Element_Anemo);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Element_Geo);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reaction_Vaporize);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reaction_Melt);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reaction_Overloaded);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reaction_ElectroCharged);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reaction_Superconduct);
+
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cooldown_Ability_SwitchPartySlot);
+
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(UI_Layer_Game);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(UI_Layer_GameMenu);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(UI_Layer_Modal);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_NormalAttack_ComboWindow_Opened);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_NormalAttack_ComboWindow_Closed);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Montage_AttackHit);
+	
+	
+	
+	
+	
+	inline const TArray<FGameplayTag>& GetPartySwitchTags()
+	{
+		static const TArray<FGameplayTag> Tags = {
+			AetherGameplayTags::InputTag_SwitchPartySlot1,
+			AetherGameplayTags::InputTag_SwitchPartySlot2,
+			AetherGameplayTags::InputTag_SwitchPartySlot3,
+			AetherGameplayTags::InputTag_SwitchPartySlot4,
+		};
+
+		return Tags;
+	}
+
+	inline int32 GetPartyIndexFromInputTag(const FGameplayTag& InputTag)
+	{
+		return GetPartySwitchTags().IndexOfByKey(InputTag);
+	}
+
+	inline FGameplayTag GetInputTagFromPartyIndex(int32 PartyIndex)
+	{
+		const TArray<FGameplayTag>& Tags = GetPartySwitchTags();
+
+		if (!Tags.IsValidIndex(PartyIndex))
+		{
+			return FGameplayTag::EmptyTag;
+		}
+
+		return Tags[PartyIndex];
+	}
+	
+}

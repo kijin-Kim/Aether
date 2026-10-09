@@ -1,0 +1,66 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Aether/AbilitySystem/AetherGameplayAbility.h"
+#include "AetherGameplayAbility_NormalAttack.generated.h"
+
+
+UENUM(BlueprintType)
+enum class EElement : uint8
+{
+	None,
+	Pyro,
+	Hydro,
+	Electro,
+	Cryo,
+	Anemo,
+	Geo,
+	Dendro
+};
+
+/**
+ * 
+ */
+UCLASS()
+class AETHER_API UAetherGameplayAbility_NormalAttack : public UAetherGameplayAbility
+{
+	GENERATED_BODY()
+
+public:
+	UFUNCTION()
+	void OnAttackHit(FGameplayEventData Payload);
+	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
+	virtual void InputPressed(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) override;
+	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool, bool bWasCancelled) override;
+
+	void PlayCombo();
+
+private:
+	UFUNCTION()
+	void OnMontageCompleted();
+	UFUNCTION()
+	void OnMontageCancelled();
+
+	UFUNCTION()
+	void OnWindowOpenedEvent(FGameplayEventData Payload);
+	UFUNCTION()
+	void OnWindowClosedEvent(FGameplayEventData Payload);
+
+	// 일반공격 콤보에 필요한 데이터가 있는지 확인하는 함수
+	bool HasValidComboData() const;
+
+private:
+	UPROPERTY(EditDefaultsOnly, Category = "Aether|Animation")
+	TArray<TObjectPtr<UAnimMontage>> GroundAttackAnimations;
+
+	int8 ComboIndex = 0;
+
+	bool bComboWindowOpened = false;
+	bool bInputBuffered = false;
+
+
+	UPROPERTY(EditDefaultsOnly, Category = "Aether")
+	TSubclassOf<UGameplayEffect> ElementalDamageGE;
+};
