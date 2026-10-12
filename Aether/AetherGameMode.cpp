@@ -2,3 +2,9 @@
 
 
 #include "AetherGameMode.h"
+#include "Aether/PartySystem/AetherFieldCharacterPawn.h"
+
+AAetherGameMode::AAetherGameMode()
+{
+	DefaultPawnClass = AAetherFieldCharacterPawn::StaticClass();
+}

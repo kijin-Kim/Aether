@@ -5,6 +5,7 @@
 
 #include "Aether/AbilitySystem/AetherAbilitySystemComponent.h"
 #include "AetherPlayerState.h"
+#include "Aether/PartySystem/AetherFieldCharacterPawn.h"
 #include "EnhancedInputSubsystems.h"
 #include "Aether/AetherGameplayTags.h"
 #include "Aether/Input/AetherInputComponent.h"
@@ -68,6 +69,27 @@ void AAetherPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 
 	Super::EndPlay(EndPlayReason);
+}
+
+void AAetherPlayerController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+	if (AAetherPlayerState* PS = GetPlayerState<AAetherPlayerState>())
+	{
+		if (AAetherFieldCharacterPawn* FieldPawn = Cast<AAetherFieldCharacterPawn>(GetPawn()))
+		{
+			PS->GetPartyComponent()->AttachFieldPawn(FieldPawn);
+		}
+	}
+}
+
+void AAetherPlayerController::OnUnPossess()
+{
+	if (AAetherPlayerState* PS = GetPlayerState<AAetherPlayerState>())
+	{
+		PS->GetPartyComponent()->DetachFieldPawn(Cast<AAetherFieldCharacterPawn>(GetPawn()));
+	}
+	Super::OnUnPossess();
 }
 
 void AAetherPlayerController::InitializePrimaryGameLayout()
@@ -177,7 +199,7 @@ void AAetherPlayerController::PostProcessInput(const float DeltaTime, const bool
 void AAetherPlayerController::AbilityInputPressed(FGameplayTag InputTag)
 {
 	AAetherPlayerState* AetherPlayerState = GetPlayerState<AAetherPlayerState>();
-	if (!AetherPlayerState)
+	if (!AetherPlayerState || !IsValid(AetherPlayerState->GetPartyComponent()->GetFieldCharacterPawn()))
 	{
 		return;
 	}
@@ -195,7 +217,7 @@ void AAetherPlayerController::AbilityInputPressed(FGameplayTag InputTag)
 void AAetherPlayerController::AbilityInputReleased(FGameplayTag InputTag)
 {
 	AAetherPlayerState* AetherPlayerState = GetPlayerState<AAetherPlayerState>();
-	if (!AetherPlayerState)
+	if (!AetherPlayerState || !IsValid(AetherPlayerState->GetPartyComponent()->GetFieldCharacterPawn()))
 	{
 		return;
 	}

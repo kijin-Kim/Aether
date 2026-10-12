@@ -15,6 +15,6 @@ class AETHER_API AAetherGameMode : public AGameModeBase
 	GENERATED_BODY()
 	
 public:
-	
+	AAetherGameMode();
 	
 };

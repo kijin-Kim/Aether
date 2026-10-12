@@ -41,3 +41,18 @@ void AAetherFieldCharacterPawn::SetFieldStreamingSourceEnabled(const bool bEnabl
 		FieldStreamingSourceComponent->DisableStreamingSource();
 	}
 }
+
+bool AAetherFieldCharacterPawn::ApplyCharacterAppearance(
+	USkeletalMesh* SkeletalMesh, TSubclassOf<UAnimInstance> AnimInstanceClass)
+{
+	if (!GetMesh() || !SkeletalMesh)
+	{
+		return false;
+	}
+
+	GetMesh()->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
+	GetMesh()->SetRelativeLocation(FVector(0.f, 0.f, -90.f));
+	GetMesh()->SetSkeletalMesh(SkeletalMesh);
+	GetMesh()->SetAnimInstanceClass(AnimInstanceClass);
+	return true;
+}

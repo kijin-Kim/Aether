@@ -11,6 +11,9 @@
 #include "Aether/AbilitySystem/AetherCharacterDefinition.h"
 #include "Aether/AbilitySystem/Abilities/AetherGameplayAbility_SwitchPartySlot.h"
 #include "Aether/Player/AetherPlayerState.h"
+#include "Animation/AnimInstance.h"
+#include "Engine/SkeletalMesh.h"
+#include "UObject/StrongObjectPtr.h"
 
 
 UAetherPartyComponent::UAetherPartyComponent()
@@ -20,8 +23,7 @@ UAetherPartyComponent::UAetherPartyComponent()
 
 void UAetherPartyComponent::InitializeParty(const TArray<FPrimaryAssetId>& CharacterIds)
 {
-	AActor* Owner = GetOwner();
-	if (!Owner)
+	if (bPartyConfigured || !GetOwner() || !GetWorld())
 	{
 		return;
 	}
@@ -34,11 +36,11 @@ void UAetherPartyComponent::InitializeParty(const TArray<FPrimaryAssetId>& Chara
 		       PartyCharacterIds.Num(), MaxPartyMembers);
 		PartyCharacterIds.SetNum(MaxPartyMembers);
 	}
-	PendingPartyCharacterIds = PartyCharacterIds;
 	PartyMemberStateActors.Reset();
 	PartyMemberStateActors.SetNum(PartyCharacterIds.Num());
+	LoadedPartyDefinitions.SetNum(PartyCharacterIds.Num());
 	ActiveSlotIndex = INDEX_NONE;
-	bPartyInitialized = true;
+	bPartyConfigured = true;
 	OnPartyChanged.Broadcast();
 
 	if (PartyCharacterIds.IsEmpty())
@@ -61,111 +63,157 @@ void UAetherPartyComponent::InitializeParty(const TArray<FPrimaryAssetId>& Chara
 		return;
 	}
 	
-	if (!SpawnFieldCharacterPawn())
+	// Possession can precede PlayerState BeginPlay; adopt an already controlled pawn.
+	if (AAetherPlayerState* PS = GetOwner<AAetherPlayerState>())
 	{
-		return;
-	}
-
-	if (AAetherPlayerState* PlayerState = GetOwner<AAetherPlayerState>())
-	{
-		UAetherAbilitySystemComponent* PartyASC = PlayerState->GetPartyASC();
-		if (!PartyASC)
+		if (APlayerController* PC = PS->GetPlayerController())
 		{
-			return;
-		}
-
-		PartyASC->InitAbilityActorInfo(GetOwner(), FieldCharacterPawn);
-		FAetherAbilitySet_GrantedHandles PartyAbilitySetHandles;
-		if (PartyAbilitySet)
-		{
-			PartyAbilitySet->InitializeAbilitySystem(PartyASC, PartyAbilitySetHandles, nullptr);
-		}
-
-		for (const FGameplayTag& PartySwitchTag : AetherGameplayTags::GetPartySwitchTags())
-		{
-			FGameplayAbilitySpec NewSpec(UAetherGameplayAbility_SwitchPartySlot::StaticClass());
-			NewSpec.GetDynamicSpecSourceTags().AddTag(PartySwitchTag);
-			PartyASC->GiveAbility(NewSpec);
+			AttachFieldPawn(Cast<AAetherFieldCharacterPawn>(PC->GetPawn()));
 		}
 	}
+	TryInitializePartyRuntime();
 
 	for (const FPrimaryAssetId& CharacterId : PartyCharacterIds)
 	{
 		FOnCharacterDefinitionLoaded OnLoadedDelegate;
-		OnLoadedDelegate.BindDynamic(this, &UAetherPartyComponent::AddPartyMemberStateActor);
+		OnLoadedDelegate.BindDynamic(this, &UAetherPartyComponent::HandleInitialCharacterLoaded);
 		CharacterAssetSubsystem->LoadCharacterGameplayAndDisplay(CharacterId, MoveTemp(OnLoadedDelegate));
 	}
 }
 
-bool UAetherPartyComponent::SpawnFieldCharacterPawn()
+void UAetherPartyComponent::AttachFieldPawn(AAetherFieldCharacterPawn* Pawn)
 {
-	AAetherPlayerState* PS = GetOwner<AAetherPlayerState>();
-	if (!PS)
+	if (!IsValid(Pawn) || Pawn == FieldCharacterPawn)
 	{
-		return false;
+		return;
 	}
-
-	APlayerController* PC = PS->GetPlayerController();
-	if (!PC || !GetWorld())
+	if (FieldCharacterPawn)
 	{
-		return false;
+		DetachFieldPawn(FieldCharacterPawn);
 	}
-
-	FTransform SpawnTransform = FTransform::Identity;
-	if (PC->StartSpot.Get())
+	FieldCharacterPawn = Pawn;
+	if (UAetherAbilitySystemComponent* PartyASC = GetPartyAbilitySystemComponent())
 	{
-		SpawnTransform = PC->StartSpot->GetActorTransform();
+		PartyASC->InitAbilityActorInfo(GetOwner(), Pawn);
 	}
-	else if (APawn* ExistingPawn = PC->GetPawn())
+	for (AAetherPartyMemberStateActor* Member : PartyMemberStateActors)
 	{
-		SpawnTransform = ExistingPawn->GetActorTransform();
+		if (Member)
+		{
+			Member->GetAetherAbilitySystemComponent()->InitAbilityActorInfo(Member, Pawn);
+		}
 	}
-
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = GetOwner();
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-	FieldCharacterPawn = GetWorld()->SpawnActor<AAetherFieldCharacterPawn>(
-		AAetherFieldCharacterPawn::StaticClass(), SpawnTransform, SpawnParams);
-	if (!FieldCharacterPawn)
+	TryInitializePartyRuntime();
+	if (ActiveSlotIndex != INDEX_NONE)
 	{
-		return false;
+		ApplyPartyMemberToFieldPawn(ActiveSlotIndex);
 	}
-
-	PC->Possess(FieldCharacterPawn);
-	return true;
 }
 
-void UAetherPartyComponent::AddPartyMemberStateActor(UAetherCharacterDefinition* LoadedDefinition)
+void UAetherPartyComponent::DetachFieldPawn(AAetherFieldCharacterPawn* Pawn)
 {
-	if (!LoadedDefinition || !GetWorld() || !FieldCharacterPawn)
+	if (!Pawn || Pawn != FieldCharacterPawn)
 	{
-		UE_LOG(LogAether, Warning, TEXT("AddPartyMemberStateActor skipped: character definition failed to load."));
+		return;
+	}
+	FieldCharacterPawn = nullptr;
+	if (UAetherAbilitySystemComponent* PartyASC = GetPartyAbilitySystemComponent())
+	{
+		PartyASC->CancelAllAbilities();
+		PartyASC->InitAbilityActorInfo(GetOwner(), nullptr);
+	}
+	for (AAetherPartyMemberStateActor* Member : PartyMemberStateActors)
+	{
+		if (Member)
+		{
+			UAetherAbilitySystemComponent* ASC = Member->GetAetherAbilitySystemComponent();
+			ASC->CancelAllAbilities();
+			ASC->InitAbilityActorInfo(Member, nullptr);
+		}
+	}
+}
+
+void UAetherPartyComponent::TryInitializePartyRuntime()
+{
+	UAetherAbilitySystemComponent* PartyASC = GetPartyAbilitySystemComponent();
+	if (!bPartyConfigured || PartyCharacterIds.IsEmpty() || !IsValid(FieldCharacterPawn)
+		|| !GetWorld() || !PartyASC)
+	{
+		return;
+	}
+
+	EnsurePartyAbilitiesGranted(PartyASC);
+
+	for (int32 SlotIndex = 0; SlotIndex < LoadedPartyDefinitions.Num(); ++SlotIndex)
+	{
+		if (!LoadedPartyDefinitions[SlotIndex] || PartyMemberStateActors[SlotIndex])
+		{
+			continue;
+		}
+		AAetherPartyMemberStateActor* Member = GetWorld()->SpawnActor<AAetherPartyMemberStateActor>();
+		if (!Member)
+		{
+			continue;
+		}
+		PartyMemberStateActors[SlotIndex] = Member;
+		Member->InitializePartyMemberStateActor(PartyCharacterIds[SlotIndex], FieldCharacterPawn);
+		LoadedPartyDefinitions[SlotIndex] = nullptr;
+		const bool bShouldActivateInitialSlot = SlotIndex == 0 && ActiveSlotIndex == INDEX_NONE;
+		if (bShouldActivateInitialSlot)
+		{
+			if (RequestSwitchPartySlot(0))
+			{
+				// A successful switch already broadcasts the change.
+				continue;
+			}
+		}
+		OnPartyChanged.Broadcast();
+	}
+}
+
+void UAetherPartyComponent::EnsurePartyAbilitiesGranted(UAetherAbilitySystemComponent* PartyASC)
+{
+	if (bPartyAbilitiesGranted)
+	{
+		return;
+	}
+
+	// OnGranted can reenter initialization; mark before granting, with the avatar already attached.
+	bPartyAbilitiesGranted = true;
+	FAetherAbilitySet_GrantedHandles GrantedHandles;
+	if (PartyAbilitySet)
+	{
+		PartyAbilitySet->InitializeAbilitySystem(PartyASC, GrantedHandles, nullptr);
+	}
+
+	// 파티 슬롯 교체 Ability 부여
+	for (const FGameplayTag& SwitchTag : AetherGameplayTags::GetPartySwitchTags())
+	{
+		FGameplayAbilitySpec Spec(UAetherGameplayAbility_SwitchPartySlot::StaticClass());
+		Spec.GetDynamicSpecSourceTags().AddTag(SwitchTag);
+		PartyASC->GiveAbility(Spec);
+	}
+}
+
+void UAetherPartyComponent::HandleInitialCharacterLoaded(UAetherCharacterDefinition* LoadedDefinition)
+{
+	if (!LoadedDefinition || !GetWorld())
+	{
+		UE_LOG(LogAether, Warning, TEXT("HandleInitialCharacterLoaded skipped: character definition failed to load."));
 		return;
 	}
 
 	const FPrimaryAssetId CharacterId = LoadedDefinition->GetPrimaryAssetId();
-	const int32 SlotIndex = PendingPartyCharacterIds.IndexOfByKey(CharacterId);
+	const int32 SlotIndex = PartyCharacterIds.IndexOfByKey(CharacterId);
 	if (!PartyMemberStateActors.IsValidIndex(SlotIndex))
 	{
-		UE_LOG(LogAether, Warning, TEXT("AddPartyMemberStateActor skipped: unexpected character %s."),
+		UE_LOG(LogAether, Warning, TEXT("HandleInitialCharacterLoaded skipped: unexpected character %s."),
 		       *CharacterId.ToString());
 		return;
 	}
 
-	AAetherPartyMemberStateActor* NewMemberActor = GetWorld()->SpawnActor<AAetherPartyMemberStateActor>();
-	if (!NewMemberActor)
-	{
-		return;
-	}
-
-	NewMemberActor->InitializePartyMemberStateActor(CharacterId, FieldCharacterPawn);
-	PartyMemberStateActors[SlotIndex] = NewMemberActor;
-
-	if (SlotIndex != 0 || !RequestSwitchPartySlot(0))
-	{
-		OnPartyChanged.Broadcast();
-	}
+	LoadedPartyDefinitions[SlotIndex] = LoadedDefinition;
+	TryInitializePartyRuntime();
 }
 
 void UAetherPartyComponent::RegisterAndCallPartyChanged(FOnAetherPartyChangedCallback Callback)
@@ -177,7 +225,7 @@ void UAetherPartyComponent::RegisterAndCallPartyChanged(FOnAetherPartyChangedCal
 
 	OnPartyChanged.AddUnique(Callback);
 
-	if (bPartyInitialized)
+	if (bPartyConfigured)
 	{
 		Callback.Execute();
 	}
@@ -195,7 +243,7 @@ bool UAetherPartyComponent::RequestReplacePartyMember(
 	};
 
 	if (PendingReplacementSlotIndex != INDEX_NONE
-		|| !bPartyInitialized
+		|| !bPartyConfigured
 		|| !PartyCharacterIds.IsValidIndex(SlotIndex)
 		|| SlotIndex >= MaxPartyMembers
 		|| !NewCharacterId.IsValid())
@@ -212,50 +260,63 @@ bool UAetherPartyComponent::RequestReplacePartyMember(
 	const int32 ExistingSlotIndex = PartyCharacterIds.IndexOfByKey(NewCharacterId);
 	if (ExistingSlotIndex != INDEX_NONE)
 	{
-		if (!PartyMemberStateActors.IsValidIndex(SlotIndex)
-			|| !PartyMemberStateActors.IsValidIndex(ExistingSlotIndex)
-			|| !PartyMemberStateActors[SlotIndex]
-			|| !PartyMemberStateActors[ExistingSlotIndex]
-			|| !PendingPartyCharacterIds.IsValidIndex(SlotIndex)
-			|| !PendingPartyCharacterIds.IsValidIndex(ExistingSlotIndex))
-		{
-			return FailRequest();
-		}
-
-		const bool bAffectsActiveSlot =
-			ActiveSlotIndex == SlotIndex || ActiveSlotIndex == ExistingSlotIndex;
-		if (bAffectsActiveSlot)
-		{
-			UAetherAbilitySystemComponent* ActiveASC = GetActiveAbilitySystemComponent();
-			UAetherAbilitySystemComponent* PartyASC = GetPartyAbilitySystemComponent();
-			if ((ActiveASC && ActiveASC->HasActiveAbilityWithSwapPolicy(EAetherAbilitySwapPolicy::Block))
-				|| (PartyASC && PartyASC->HasActiveAbilityWithSwapPolicy(EAetherAbilitySwapPolicy::Block)))
-			{
-				return FailRequest();
-			}
-
-			if (ActiveASC)
-			{
-				ActiveASC->CancelActiveAbilitiesWithSwapPolicy(EAetherAbilitySwapPolicy::Cancel);
-			}
-		}
-
-		PartyCharacterIds.Swap(SlotIndex, ExistingSlotIndex);
-		PendingPartyCharacterIds.Swap(SlotIndex, ExistingSlotIndex);
-		PartyMemberStateActors.Swap(SlotIndex, ExistingSlotIndex);
-
-		if (bAffectsActiveSlot && !ApplyPartyMemberToFieldPawn(ActiveSlotIndex))
-		{
-			PartyCharacterIds.Swap(SlotIndex, ExistingSlotIndex);
-			PendingPartyCharacterIds.Swap(SlotIndex, ExistingSlotIndex);
-			PartyMemberStateActors.Swap(SlotIndex, ExistingSlotIndex);
-			return FailRequest();
-		}
-
-		OnPartyChanged.Broadcast();
-		OnCompleted.ExecuteIfBound(true);
-		return true;
+		const bool bSucceeded = SwapPartySlots(SlotIndex, ExistingSlotIndex);
+		OnCompleted.ExecuteIfBound(bSucceeded);
+		return bSucceeded;
 	}
+
+	return BeginPartyMemberReplacement(SlotIndex, NewCharacterId, MoveTemp(OnCompleted));
+}
+
+bool UAetherPartyComponent::SwapPartySlots(int32 SlotIndex, int32 ExistingSlotIndex)
+{
+	if (!PartyMemberStateActors.IsValidIndex(SlotIndex)
+		|| !PartyMemberStateActors.IsValidIndex(ExistingSlotIndex)
+		|| !PartyMemberStateActors[SlotIndex]
+		|| !PartyMemberStateActors[ExistingSlotIndex])
+	{
+		return false;
+	}
+
+	const bool bAffectsActiveSlot = ActiveSlotIndex == SlotIndex || ActiveSlotIndex == ExistingSlotIndex;
+	if (bAffectsActiveSlot)
+	{
+		UAetherAbilitySystemComponent* ActiveASC = GetActiveAbilitySystemComponent();
+		UAetherAbilitySystemComponent* PartyASC = GetPartyAbilitySystemComponent();
+		if ((ActiveASC && ActiveASC->HasActiveAbilityWithSwapPolicy(EAetherAbilitySwapPolicy::Block))
+			|| (PartyASC && PartyASC->HasActiveAbilityWithSwapPolicy(EAetherAbilitySwapPolicy::Block)))
+		{
+			return false;
+		}
+
+		if (ActiveASC)
+		{
+			ActiveASC->CancelActiveAbilitiesWithSwapPolicy(EAetherAbilitySwapPolicy::Cancel);
+		}
+	}
+
+	PartyCharacterIds.Swap(SlotIndex, ExistingSlotIndex);
+	PartyMemberStateActors.Swap(SlotIndex, ExistingSlotIndex);
+	if (bAffectsActiveSlot && !ApplyPartyMemberToFieldPawn(ActiveSlotIndex))
+	{
+		PartyCharacterIds.Swap(SlotIndex, ExistingSlotIndex);
+		PartyMemberStateActors.Swap(SlotIndex, ExistingSlotIndex);
+		return false;
+	}
+
+	OnPartyChanged.Broadcast();
+	return true;
+}
+
+bool UAetherPartyComponent::BeginPartyMemberReplacement(
+	int32 SlotIndex, const FPrimaryAssetId& NewCharacterId,
+	FOnAetherPartyMemberReplaceCompleted OnCompleted)
+{
+	auto FailRequest = [&OnCompleted]()
+	{
+		OnCompleted.ExecuteIfBound(false);
+		return false;
+	};
 
 	if (!GetWorld() || !FieldCharacterPawn)
 	{
@@ -286,7 +347,7 @@ void UAetherPartyComponent::HandleReplacementCharacterLoaded(UAetherCharacterDef
 	if (!LoadedDefinition
 		|| LoadedDefinition->GetPrimaryAssetId() != PendingReplacementCharacterId
 		|| !PartyMemberStateActors.IsValidIndex(SlotIndex)
-		|| !PendingPartyCharacterIds.IsValidIndex(SlotIndex)
+		|| !PartyCharacterIds.IsValidIndex(SlotIndex)
 		|| !GetWorld()
 		|| !FieldCharacterPawn)
 	{
@@ -332,7 +393,6 @@ void UAetherPartyComponent::HandleReplacementCharacterLoaded(UAetherCharacterDef
 	const FPrimaryAssetId OldCharacterId = PartyCharacterIds[SlotIndex];
 	PartyMemberStateActors[SlotIndex] = NewMemberActor;
 	PartyCharacterIds[SlotIndex] = NewCharacterId;
-	PendingPartyCharacterIds[SlotIndex] = NewCharacterId;
 
 	FOnAetherPartyMemberReplaceCompleted CompletionCallback = MoveTemp(PendingReplacementCallback);
 	PendingReplacementSlotIndex = INDEX_NONE;
@@ -343,7 +403,6 @@ void UAetherPartyComponent::HandleReplacementCharacterLoaded(UAetherCharacterDef
 	{
 		PartyMemberStateActors[SlotIndex] = OldMemberActor;
 		PartyCharacterIds[SlotIndex] = OldCharacterId;
-		PendingPartyCharacterIds[SlotIndex] = OldCharacterId;
 		NewMemberActor->Destroy();
 		CompletionCallback.ExecuteIfBound(false);
 		return;
@@ -374,18 +433,30 @@ void UAetherPartyComponent::CompletePendingReplacement(bool bSucceeded)
 
 bool UAetherPartyComponent::RequestSwitchPartySlot(int32 SlotIndex)
 {
-	if (!PartyMemberStateActors.IsValidIndex(SlotIndex) || !PartyMemberStateActors[SlotIndex])
+	if (!PartyMemberStateActors.IsValidIndex(SlotIndex) || !IsValid(PartyMemberStateActors[SlotIndex]))
 	{
 		UE_LOG(LogAether, Warning, TEXT("RequestSwitchPartySlot failed: Invalid SlotIndex %d"), SlotIndex);
 		return false;
 	}
 
-	if (!FieldCharacterPawn || !FieldCharacterPawn->GetMesh())
+	if (!IsValid(FieldCharacterPawn) || !IsValid(FieldCharacterPawn->GetMesh()))
 	{
 		return false;
 	}
 
+	const TWeakObjectPtr<AAetherFieldCharacterPawn> PreparedPawn = FieldCharacterPawn;
+	const TWeakObjectPtr<AAetherPartyMemberStateActor> TargetMember = PartyMemberStateActors[SlotIndex];
+	// Prepare appearance before cancellation; loading failure must not interrupt the current ability.
+	const TStrongObjectPtr<USkeletalMesh> PreparedMesh(TargetMember->GetSkeletalMesh());
+	if (!PreparedMesh.IsValid())
+	{
+		return false;
+	}
+	const TStrongObjectPtr<UClass> PreparedAnimClass(TargetMember->GetAnimInstanceClass().Get());
+	const int32 PreviousActiveSlotIndex = ActiveSlotIndex;
+
 	UAetherAbilitySystemComponent* ActiveASC = GetActiveAbilitySystemComponent();
+	const TWeakObjectPtr<UAetherAbilitySystemComponent> PreviousActiveASC = ActiveASC;
 	UAetherAbilitySystemComponent* PartyASC = GetPartyAbilitySystemComponent();
 
 	if ((ActiveASC && ActiveASC->HasActiveAbilityWithSwapPolicy(EAetherAbilitySwapPolicy::Block))
@@ -399,7 +470,18 @@ bool UAetherPartyComponent::RequestSwitchPartySlot(int32 SlotIndex)
 		ActiveASC->CancelActiveAbilitiesWithSwapPolicy(EAetherAbilitySwapPolicy::Cancel);
 	}
 
-	if (!ApplyPartyMemberToFieldPawn(SlotIndex))
+	// Ability end callbacks can change the party or its pawn before cancellation returns.
+	if (!PreparedPawn.IsValid() || FieldCharacterPawn != PreparedPawn.Get()
+		|| !IsValid(PreparedPawn->GetMesh())
+		|| !TargetMember.IsValid() || !PartyMemberStateActors.IsValidIndex(SlotIndex)
+		|| PartyMemberStateActors[SlotIndex] != TargetMember.Get()
+		|| ActiveSlotIndex != PreviousActiveSlotIndex
+		|| GetActiveAbilitySystemComponent() != PreviousActiveASC.Get())
+	{
+		return false;
+	}
+
+	if (!PreparedPawn->ApplyCharacterAppearance(PreparedMesh.Get(), PreparedAnimClass.Get()))
 	{
 		return false;
 	}
@@ -426,11 +508,7 @@ bool UAetherPartyComponent::ApplyPartyMemberToFieldPawn(const int32 SlotIndex)
 		return false;
 	}
 
-	FieldCharacterPawn->GetMesh()->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
-	FieldCharacterPawn->GetMesh()->SetRelativeLocation(FVector(0.f, 0.f, -90.f));
-	FieldCharacterPawn->GetMesh()->SetSkeletalMesh(SkeletalMesh);
-	FieldCharacterPawn->GetMesh()->SetAnimInstanceClass(MemberStateActor->GetAnimInstanceClass());
-	return true;
+	return FieldCharacterPawn->ApplyCharacterAppearance(SkeletalMesh, MemberStateActor->GetAnimInstanceClass());
 }
 
 UAetherAbilitySystemComponent* UAetherPartyComponent::GetPartyAbilitySystemComponent() const

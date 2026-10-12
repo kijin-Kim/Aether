@@ -50,6 +50,10 @@ void AAetherPlayerState::CallOrRegisterPlayerDataInitialized(FOnAetherPlayerData
 
 void AAetherPlayerState::ProcessInputs()
 {
+	if (!IsValid(PartyComponent->GetFieldCharacterPawn()))
+	{
+		return;
+	}
 	PartyASC->ProcessInputs();
 	UAetherAbilitySystemComponent* ActiveASC = GetActiveAbilitySystemComponent();
 	if (ActiveASC)

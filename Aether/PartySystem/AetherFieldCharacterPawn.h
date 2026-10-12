@@ -19,6 +19,7 @@ class AETHER_API AAetherFieldCharacterPawn : public ACharacter
 
 public:
 	AAetherFieldCharacterPawn();
+	bool ApplyCharacterAppearance(USkeletalMesh* SkeletalMesh, TSubclassOf<UAnimInstance> AnimInstanceClass);
 	void SetFieldStreamingSourceEnabled(bool bEnabled);
 
 private:
