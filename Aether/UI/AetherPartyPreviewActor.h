@@ -38,7 +38,8 @@ protected:
 
 private:
 	UFUNCTION()
-	void HandleCharacterDisplayLoaded(UAetherCharacterDefinition* LoadedDefinition);
+	void HandleCharacterDisplayLoaded(FPrimaryAssetId RequestedCharacterId,
+	                                  UAetherCharacterDefinition* LoadedDefinition);
 
 	UPROPERTY(VisibleAnywhere, Category = "Aether|Party Preview")
 	TObjectPtr<USceneComponent> SceneRoot;

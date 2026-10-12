@@ -18,7 +18,10 @@ class AETHER_API AAetherPartyMemberStateActor : public AActor
 
 public:
 	AAetherPartyMemberStateActor();
-	void InitializePartyMemberStateActor(FPrimaryAssetId Id, AActor* AvatarActor);
+	// Accepts a Gameplay+Display-loaded definition once; false means invalid input or repeated setup.
+	bool InitializeCharacterRuntime(UAetherCharacterDefinition* Definition, AActor* AvatarActor);
+	// Updates the GAS relationship only. The caller cancels abilities before clearing the avatar.
+	void SetAvatarActor(AActor* AvatarActor);
 	UAetherAbilitySystemComponent* GetAetherAbilitySystemComponent() const { return AetherASC; }
 
 	
@@ -26,13 +29,8 @@ public:
 	TSubclassOf<UAnimInstance> GetAnimInstanceClass() const;
 
 private:
-	UAetherCharacterDefinition* GetCharacterData() const;
-	
-	
-	
-private:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character", meta = (AllowPrivateAccess = "true"))
-	FPrimaryAssetId CharacterDefinitionId;
+	UPROPERTY()
+	TObjectPtr<UAetherCharacterDefinition> CharacterDefinition;
 	UPROPERTY()
 	TObjectPtr<UAetherAbilitySystemComponent> AetherASC;
 	UPROPERTY()

@@ -31,7 +31,8 @@ public:
 	void AttachFieldPawn(AAetherFieldCharacterPawn* Pawn);
 	void DetachFieldPawn(AAetherFieldCharacterPawn* Pawn);
 	UFUNCTION()
-	void HandleInitialCharacterLoaded(UAetherCharacterDefinition* LoadedDefinition);
+	void HandleInitialCharacterLoaded(FPrimaryAssetId RequestedCharacterId,
+	                                  UAetherCharacterDefinition* LoadedDefinition);
 
 	UPROPERTY(BlueprintAssignable, Category = "Aether|Party")
 	FOnAetherPartyChanged OnPartyChanged;
@@ -69,7 +70,8 @@ private:
 	bool BeginPartyMemberReplacement(int32 SlotIndex, const FPrimaryAssetId& NewCharacterId,
 	                                FOnAetherPartyMemberReplaceCompleted OnCompleted);
 	UFUNCTION()
-	void HandleReplacementCharacterLoaded(UAetherCharacterDefinition* LoadedDefinition);
+	void HandleReplacementCharacterLoaded(FPrimaryAssetId RequestedCharacterId,
+	                                      UAetherCharacterDefinition* LoadedDefinition);
 	void CompletePendingReplacement(bool bSucceeded);
 	bool ApplyPartyMemberToFieldPawn(int32 SlotIndex);
 

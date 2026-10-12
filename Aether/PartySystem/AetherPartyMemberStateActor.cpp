@@ -3,7 +3,6 @@
 
 #include "AetherPartyMemberStateActor.h"
 
-#include "Aether/AetherCharacterAssetSubsystem.h"
 #include "Aether/AbilitySystem/AetherAbilitySystemComponent.h"
 #include "Aether/AbilitySystem/AetherCharacterDefinition.h"
 #include "Aether/AbilitySystem/AttributeSet/AetherBaseAttributeSet.h"
@@ -16,45 +15,38 @@ AAetherPartyMemberStateActor::AAetherPartyMemberStateActor()
 	BaseAttributeSet = CreateDefaultSubobject<UAetherBaseAttributeSet>("BaseAttributeSet");
 }
 
-void AAetherPartyMemberStateActor::InitializePartyMemberStateActor(FPrimaryAssetId Id, AActor* AvatarActor)
+bool AAetherPartyMemberStateActor::InitializeCharacterRuntime(
+	UAetherCharacterDefinition* Definition, AActor* AvatarActor)
 {
-	AetherASC->InitAbilityActorInfo(this, AvatarActor);
-	CharacterDefinitionId = Id;
-	UAetherCharacterDefinition* CharacterData = GetCharacterData();
-	if (!CharacterData)
+	if (CharacterDefinition || !IsValid(Definition) || !IsValid(AvatarActor))
 	{
-		return;
+		return false;
 	}
 
-	for (const TSoftObjectPtr<UAetherAbilitySet>& AbilitySetPtr : CharacterData->AbilitySets)
+	CharacterDefinition = Definition;
+	// OnGranted abilities may use the avatar immediately.
+	SetAvatarActor(AvatarActor);
+	for (const TSoftObjectPtr<UAetherAbilitySet>& AbilitySetPtr : CharacterDefinition->AbilitySets)
 	{
 		if (UAetherAbilitySet* AbilitySet = AbilitySetPtr.LoadSynchronous())
 		{
 			AbilitySet->InitializeAbilitySystem(AetherASC, GrantedAbilitySetHandles, nullptr);
 		}
 	}
+	return true;
+}
+
+void AAetherPartyMemberStateActor::SetAvatarActor(AActor* AvatarActor)
+{
+	AetherASC->InitAbilityActorInfo(this, AvatarActor);
 }
 
 USkeletalMesh* AAetherPartyMemberStateActor::GetSkeletalMesh() const
 {
-	UAetherCharacterDefinition* CharacterData = GetCharacterData();
-	return CharacterData ? CharacterData->DisplayMesh.LoadSynchronous() : nullptr;
+	return CharacterDefinition ? CharacterDefinition->DisplayMesh.LoadSynchronous() : nullptr;
 }
 
 TSubclassOf<UAnimInstance> AAetherPartyMemberStateActor::GetAnimInstanceClass() const
 {
-	UAetherCharacterDefinition* CharacterData = GetCharacterData();
-	return CharacterData ? CharacterData->DisplayAnimInstanceClass.LoadSynchronous() : nullptr;
-}
-
-UAetherCharacterDefinition* AAetherPartyMemberStateActor::GetCharacterData() const
-{
-	UGameInstance* GameInstance = GetGameInstance();
-	if (!GameInstance)
-	{
-		return nullptr;
-	}
-
-	UAetherCharacterAssetSubsystem* CharacterAssetSubsystem = GameInstance->GetSubsystem<UAetherCharacterAssetSubsystem>();
-	return CharacterAssetSubsystem ? CharacterAssetSubsystem->GetLoadedCharacterDefinition(CharacterDefinitionId) : nullptr;
+	return CharacterDefinition ? CharacterDefinition->DisplayAnimInstanceClass.LoadSynchronous() : nullptr;
 }

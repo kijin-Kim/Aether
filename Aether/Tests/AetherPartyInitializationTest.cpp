@@ -13,6 +13,8 @@
 #include "Aether/AbilitySystem/Effects/AetherGameplayEffect_SwitchCooldown.h"
 #include "Aether/AbilitySystem/Abilities/AetherGameplayAbility_Jump.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Engine/SkeletalMesh.h"
+#include "UObject/GarbageCollection.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FAetherPartyInitializationTest,
 	"Aether.Party.InitializationAndPawnAttachment",
@@ -53,7 +55,7 @@ bool FAetherPartyInitializationTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("Attachment alone does not grant abilities"), PartyASC->GetActivatableAbilities().Num(), 0);
 		}
 		Party->InitializeParty({Id});
-		Party->HandleInitialCharacterLoaded(Definition);
+		Party->HandleInitialCharacterLoaded(Id, Definition);
 		if (!bPawnFirst)
 		{
 			TestEqual(TEXT("Party without a pawn does not grant abilities"), PartyASC->GetActivatableAbilities().Num(), 0);
@@ -136,8 +138,8 @@ bool FAetherPartyReplacementRoutingTest::RunTest(const FString& Parameters)
 		AAetherFieldCharacterPawn::StaticClass(), FTransform::Identity, SpawnParams);
 	Party->AttachFieldPawn(Pawn);
 	// No content or GameInstance is needed for routing; these members have no display mesh.
-	Party->HandleInitialCharacterLoaded(First);
-	Party->HandleInitialCharacterLoaded(Second);
+	Party->HandleInitialCharacterLoaded(First->GetPrimaryAssetId(), First);
+	Party->HandleInitialCharacterLoaded(Second->GetPrimaryAssetId(), Second);
 	const int32 AbilityCount = PS->GetPartyASC()->GetActivatableAbilities().Num();
 	TestTrue(TEXT("Ready inactive members swap synchronously"), Party->RequestReplacePartyMember(0, SecondId, {}));
 	TestEqual(TEXT("Selected character moves to requested slot"), Party->GetPartyCharacterIds()[0], SecondId);
@@ -179,8 +181,8 @@ bool FAetherPartySwitchPreparationTest::RunTest(const FString& Parameters)
 	UAetherCharacterDefinition* First = NewObject<UAetherCharacterDefinition>(World, TEXT("SwitchSource"));
 	UAetherCharacterDefinition* Second = NewObject<UAetherCharacterDefinition>(World, TEXT("SwitchTargetWithoutMesh"));
 	Party->InitializeParty({First->GetPrimaryAssetId(), Second->GetPrimaryAssetId()});
-	Party->HandleInitialCharacterLoaded(First);
-	Party->HandleInitialCharacterLoaded(Second);
+	Party->HandleInitialCharacterLoaded(First->GetPrimaryAssetId(), First);
+	Party->HandleInitialCharacterLoaded(Second->GetPrimaryAssetId(), Second);
 	// Seed the active slot because this fixture intentionally has no content to display.
 	Party->ActiveSlotIndex = 0;
 	UAetherAbilitySystemComponent* ActiveASC = Party->GetActiveAbilitySystemComponent();
@@ -205,6 +207,88 @@ bool FAetherPartySwitchPreparationTest::RunTest(const FString& Parameters)
 	Controller->UnPossess();
 	TestFalse(TEXT("Switching without a pawn is rejected"), Party->RequestSwitchPartySlot(1));
 	TestEqual(TEXT("Missing pawn preserves the active slot"), Party->GetActiveSlotIndex(), 0);
+	World->DestroyWorld(false);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FAetherPartyParameterContractsTest,
+	"Aether.Party.ParameterContracts",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FAetherPartyParameterContractsTest::RunTest(const FString& Parameters)
+{
+	const UWorld::InitializationValues WorldValues = UWorld::InitializationValues()
+		.AllowAudioPlayback(false).CreatePhysicsScene(true).CreateNavigation(false)
+		.CreateAISystem(false).ShouldSimulatePhysics(false).SetTransactional(false);
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, NAME_None, nullptr,
+		true, ERHIFeatureLevel::Num, &WorldValues);
+	AAetherPlayerState* PS = World->SpawnActor<AAetherPlayerState>();
+	UAetherPartyComponent* Party = PS->GetPartyComponent();
+	UAetherCharacterDefinition* Definition = NewObject<UAetherCharacterDefinition>(World, TEXT("ContractMember"));
+	const FPrimaryAssetId Id = Definition->GetPrimaryAssetId();
+	Party->InitializeParty({Id, Id});
+	TestFalse(TEXT("Duplicate IDs reject the whole initial composition"), Party->IsPartyInitialized());
+	TestTrue(TEXT("Rejected composition does not silently compress slots"), Party->GetPartyCharacterIds().IsEmpty());
+	Party->InitializeParty({Id, FPrimaryAssetId()});
+	TestFalse(TEXT("Invalid IDs leave initialization available for a valid retry"), Party->IsPartyInitialized());
+	Party->InitializeParty({FPrimaryAssetId(TEXT("OtherType"), TEXT("WrongType"))});
+	TestFalse(TEXT("Non-character primary asset types are rejected"), Party->IsPartyInitialized());
+	Party->InitializeParty({Id});
+	TestTrue(TEXT("A valid composition can be configured after rejection"), Party->IsPartyInitialized());
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AAetherFieldCharacterPawn* Pawn = World->SpawnActor<AAetherFieldCharacterPawn>(
+		AAetherFieldCharacterPawn::StaticClass(), FTransform::Identity, SpawnParams);
+	Party->AttachFieldPawn(Pawn);
+	UAetherCharacterDefinition* Other = NewObject<UAetherCharacterDefinition>(World, TEXT("UnexpectedContractMember"));
+	Party->HandleInitialCharacterLoaded(Other->GetPrimaryAssetId(), nullptr);
+	Party->HandleInitialCharacterLoaded(Id, nullptr);
+	Party->HandleInitialCharacterLoaded(Id, Other);
+	TestFalse(TEXT("Failed and mismatched results do not create members"),
+		static_cast<bool>(TActorIterator<AAetherPartyMemberStateActor>(World)));
+	Party->HandleInitialCharacterLoaded(Id, Definition);
+	TActorIterator<AAetherPartyMemberStateActor> It(World);
+	AAetherPartyMemberStateActor* Member = It ? *It : nullptr;
+	if (!TestNotNull(TEXT("The matching result creates a member without a GameInstance lookup"), Member))
+	{
+		World->DestroyWorld(false);
+		return false;
+	}
+	Party->HandleInitialCharacterLoaded(Id, Definition);
+	int32 MemberCount = 0;
+	for (TActorIterator<AAetherPartyMemberStateActor> MemberIt(World); MemberIt; ++MemberIt)
+	{
+		++MemberCount;
+	}
+	TestEqual(TEXT("Duplicate completion does not create another member"), MemberCount, 1);
+
+	AAetherPartyMemberStateActor* StandaloneMember = World->SpawnActor<AAetherPartyMemberStateActor>();
+	TestFalse(TEXT("Initial setup rejects a missing definition"), StandaloneMember->InitializeCharacterRuntime(nullptr, Pawn));
+	TestFalse(TEXT("Initial setup rejects a missing avatar"), StandaloneMember->InitializeCharacterRuntime(Definition, nullptr));
+	UAetherCharacterDefinition* RuntimeDefinition = NewObject<UAetherCharacterDefinition>(World, TEXT("DirectRuntimeDefinition"));
+	USkeletalMesh* Mesh = NewObject<USkeletalMesh>(RuntimeDefinition);
+	RuntimeDefinition->DisplayMesh = Mesh;
+	UAetherAbilitySet* AbilitySet = NewObject<UAetherAbilitySet>(RuntimeDefinition);
+	FAetherAbilitySet_GameplayAbility JumpAbility;
+	JumpAbility.Ability = UAetherGameplayAbility_Jump::StaticClass();
+	AbilitySet->Abilities.Add(JumpAbility);
+	RuntimeDefinition->AbilitySets.Add(AbilitySet);
+	TestTrue(TEXT("Loaded definition initializes directly without an asset subsystem"),
+		StandaloneMember->InitializeCharacterRuntime(RuntimeDefinition, Pawn));
+	TestEqual(TEXT("Appearance comes from the supplied definition"), StandaloneMember->GetSkeletalMesh(), Mesh);
+	UAetherAbilitySystemComponent* ASC = StandaloneMember->GetAetherAbilitySystemComponent();
+	TestEqual(TEXT("The supplied ability set is granted"), ASC->GetActivatableAbilities().Num(), 1);
+	TestFalse(TEXT("Repeated setup is rejected"), StandaloneMember->InitializeCharacterRuntime(Other, Pawn));
+	StandaloneMember->SetAvatarActor(nullptr);
+	TestNull(TEXT("Avatar can be cleared without recreating the ASC"), ASC->GetAvatarActor());
+	StandaloneMember->SetAvatarActor(Pawn);
+	TestEqual(TEXT("Avatar reconnect preserves the member owner"), ASC->GetOwnerActor(), static_cast<AActor*>(StandaloneMember));
+	TestEqual(TEXT("Avatar reconnect does not grant abilities again"), ASC->GetActivatableAbilities().Num(), 1);
+
+	const TWeakObjectPtr<UAetherCharacterDefinition> RetainedDefinition = RuntimeDefinition;
+	CollectGarbage(RF_NoFlags);
+	TestTrue(TEXT("The member retains its definition across garbage collection"), RetainedDefinition.IsValid());
 	World->DestroyWorld(false);
 	return true;
 }

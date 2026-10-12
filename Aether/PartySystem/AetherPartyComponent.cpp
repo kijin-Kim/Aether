@@ -28,6 +28,19 @@ void UAetherPartyComponent::InitializeParty(const TArray<FPrimaryAssetId>& Chara
 		return;
 	}
 
+	TSet<FPrimaryAssetId> SeenCharacterIds;
+	for (const FPrimaryAssetId& CharacterId : CharacterIds)
+	{
+		if (!CharacterId.IsValid() || CharacterId.PrimaryAssetType != FPrimaryAssetType(TEXT("CharacterDefinition"))
+			|| SeenCharacterIds.Contains(CharacterId))
+		{
+			UE_LOG(LogAether, Warning, TEXT("InitializeParty rejected invalid or duplicate character %s."),
+			       *CharacterId.ToString());
+			return;
+		}
+		SeenCharacterIds.Add(CharacterId);
+	}
+
 	PartyCharacterIds = CharacterIds;
 	if (PartyCharacterIds.Num() > MaxPartyMembers)
 	{
@@ -100,7 +113,7 @@ void UAetherPartyComponent::AttachFieldPawn(AAetherFieldCharacterPawn* Pawn)
 	{
 		if (Member)
 		{
-			Member->GetAetherAbilitySystemComponent()->InitAbilityActorInfo(Member, Pawn);
+			Member->SetAvatarActor(Pawn);
 		}
 	}
 	TryInitializePartyRuntime();
@@ -128,7 +141,7 @@ void UAetherPartyComponent::DetachFieldPawn(AAetherFieldCharacterPawn* Pawn)
 		{
 			UAetherAbilitySystemComponent* ASC = Member->GetAetherAbilitySystemComponent();
 			ASC->CancelAllAbilities();
-			ASC->InitAbilityActorInfo(Member, nullptr);
+			Member->SetAvatarActor(nullptr);
 		}
 	}
 }
@@ -156,7 +169,12 @@ void UAetherPartyComponent::TryInitializePartyRuntime()
 			continue;
 		}
 		PartyMemberStateActors[SlotIndex] = Member;
-		Member->InitializePartyMemberStateActor(PartyCharacterIds[SlotIndex], FieldCharacterPawn);
+		if (!Member->InitializeCharacterRuntime(LoadedPartyDefinitions[SlotIndex], FieldCharacterPawn))
+		{
+			PartyMemberStateActors[SlotIndex] = nullptr;
+			Member->Destroy();
+			continue;
+		}
 		LoadedPartyDefinitions[SlotIndex] = nullptr;
 		const bool bShouldActivateInitialSlot = SlotIndex == 0 && ActiveSlotIndex == INDEX_NONE;
 		if (bShouldActivateInitialSlot)
@@ -195,20 +213,22 @@ void UAetherPartyComponent::EnsurePartyAbilitiesGranted(UAetherAbilitySystemComp
 	}
 }
 
-void UAetherPartyComponent::HandleInitialCharacterLoaded(UAetherCharacterDefinition* LoadedDefinition)
+void UAetherPartyComponent::HandleInitialCharacterLoaded(
+	FPrimaryAssetId RequestedCharacterId, UAetherCharacterDefinition* LoadedDefinition)
 {
-	if (!LoadedDefinition || !GetWorld())
+	const int32 SlotIndex = PartyCharacterIds.IndexOfByKey(RequestedCharacterId);
+	if (!PartyMemberStateActors.IsValidIndex(SlotIndex) || !GetWorld())
 	{
-		UE_LOG(LogAether, Warning, TEXT("HandleInitialCharacterLoaded skipped: character definition failed to load."));
 		return;
 	}
-
-	const FPrimaryAssetId CharacterId = LoadedDefinition->GetPrimaryAssetId();
-	const int32 SlotIndex = PartyCharacterIds.IndexOfByKey(CharacterId);
-	if (!PartyMemberStateActors.IsValidIndex(SlotIndex))
+	if (!IsValid(LoadedDefinition) || LoadedDefinition->GetPrimaryAssetId() != RequestedCharacterId)
 	{
-		UE_LOG(LogAether, Warning, TEXT("HandleInitialCharacterLoaded skipped: unexpected character %s."),
-		       *CharacterId.ToString());
+		UE_LOG(LogAether, Warning, TEXT("HandleInitialCharacterLoaded rejected result for %s."),
+		       *RequestedCharacterId.ToString());
+		return;
+	}
+	if (PartyMemberStateActors[SlotIndex])
+	{
 		return;
 	}
 
@@ -341,10 +361,15 @@ bool UAetherPartyComponent::BeginPartyMemberReplacement(
 	return true;
 }
 
-void UAetherPartyComponent::HandleReplacementCharacterLoaded(UAetherCharacterDefinition* LoadedDefinition)
+void UAetherPartyComponent::HandleReplacementCharacterLoaded(
+	FPrimaryAssetId RequestedCharacterId, UAetherCharacterDefinition* LoadedDefinition)
 {
+	if (PendingReplacementSlotIndex == INDEX_NONE || RequestedCharacterId != PendingReplacementCharacterId)
+	{
+		return;
+	}
 	const int32 SlotIndex = PendingReplacementSlotIndex;
-	if (!LoadedDefinition
+	if (!IsValid(LoadedDefinition)
 		|| LoadedDefinition->GetPrimaryAssetId() != PendingReplacementCharacterId
 		|| !PartyMemberStateActors.IsValidIndex(SlotIndex)
 		|| !PartyCharacterIds.IsValidIndex(SlotIndex)
@@ -362,8 +387,8 @@ void UAetherPartyComponent::HandleReplacementCharacterLoaded(UAetherCharacterDef
 		return;
 	}
 
-	NewMemberActor->InitializePartyMemberStateActor(PendingReplacementCharacterId, FieldCharacterPawn);
-	if (!NewMemberActor->GetSkeletalMesh())
+	if (!NewMemberActor->InitializeCharacterRuntime(LoadedDefinition, FieldCharacterPawn)
+		|| !NewMemberActor->GetSkeletalMesh())
 	{
 		NewMemberActor->Destroy();
 		CompletePendingReplacement(false);

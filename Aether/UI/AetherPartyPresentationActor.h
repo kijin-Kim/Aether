@@ -35,10 +35,12 @@ public:
 
 private:
 	UFUNCTION()
-	void HandleCharacterDisplayLoaded(UAetherCharacterDefinition* LoadedDefinition);
+	void HandleCharacterDisplayLoaded(FPrimaryAssetId RequestedCharacterId,
+	                                  UAetherCharacterDefinition* LoadedDefinition);
 
 	UFUNCTION()
-	void HandlePreviewCharacterDisplayLoaded(UAetherCharacterDefinition* LoadedDefinition);
+	void HandlePreviewCharacterDisplayLoaded(FPrimaryAssetId RequestedCharacterId,
+	                                         UAetherCharacterDefinition* LoadedDefinition);
 
 	void UpdateCharacterPresentation();
 

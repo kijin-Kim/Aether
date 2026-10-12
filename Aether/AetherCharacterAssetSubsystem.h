@@ -9,7 +9,9 @@
 
 class UAetherCharacterDefinition;
 
-DECLARE_DYNAMIC_DELEGATE_OneParam(FOnCharacterDefinitionLoaded, UAetherCharacterDefinition*, CharacterDefinition);
+// The character ID identifies the requested asset, not a unique request generation. Null means failure.
+DECLARE_DYNAMIC_DELEGATE_TwoParams(FOnCharacterDefinitionLoaded,
+	FPrimaryAssetId, RequestedCharacterId, UAetherCharacterDefinition*, CharacterDefinition);
 
 UCLASS()
 class AETHER_API UAetherCharacterAssetSubsystem

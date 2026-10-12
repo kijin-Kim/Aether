@@ -81,14 +81,16 @@ void AAetherPartyPreviewActor::ClearPreview()
 	PreviewMesh->SetAnimInstanceClass(nullptr);
 }
 
-void AAetherPartyPreviewActor::HandleCharacterDisplayLoaded(UAetherCharacterDefinition* LoadedDefinition)
+void AAetherPartyPreviewActor::HandleCharacterDisplayLoaded(
+	FPrimaryAssetId RequestedCharacterId, UAetherCharacterDefinition* LoadedDefinition)
 {
-	if (!LoadedDefinition || LoadedDefinition->GetPrimaryAssetId() != PendingCharacterId)
+	if (RequestedCharacterId != PendingCharacterId)
 	{
-		if (!LoadedDefinition)
-		{
-			OnPreviewChanged.Broadcast(false);
-		}
+		return;
+	}
+	if (!IsValid(LoadedDefinition) || LoadedDefinition->GetPrimaryAssetId() != RequestedCharacterId)
+	{
+		OnPreviewChanged.Broadcast(false);
 		return;
 	}
 

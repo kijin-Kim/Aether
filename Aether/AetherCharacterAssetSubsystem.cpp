@@ -35,7 +35,7 @@ void UAetherCharacterAssetSubsystem::LoadCharacter(const FPrimaryAssetId& Charac
 {
 	if (!CharacterId.IsValid() || BundleNames.IsEmpty())
 	{
-		OnLoaded.ExecuteIfBound(nullptr);
+		OnLoaded.ExecuteIfBound(CharacterId, nullptr);
 		return;
 	}
 
@@ -65,7 +65,7 @@ void UAetherCharacterAssetSubsystem::HandleCharacterLoaded(const uint64 RequestI
 {
 	ActiveLoadHandles.Remove(RequestId);
 	UAetherCharacterDefinition* Definition = GetLoadedCharacterDefinition(CharacterId);
-	OnLoaded.ExecuteIfBound(Definition);
+	OnLoaded.ExecuteIfBound(CharacterId, Definition);
 }
 
 UAetherCharacterDefinition* UAetherCharacterAssetSubsystem::GetLoadedCharacterDefinition(

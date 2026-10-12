@@ -178,14 +178,14 @@ void AAetherPartyPresentationActor::ShowCharacterPreview(const FPrimaryAssetId C
 }
 
 void AAetherPartyPresentationActor::HandleCharacterDisplayLoaded(
-	UAetherCharacterDefinition* LoadedDefinition)
+	FPrimaryAssetId RequestedCharacterId, UAetherCharacterDefinition* LoadedDefinition)
 {
-	if (!LoadedDefinition)
+	if (!IsValid(LoadedDefinition) || LoadedDefinition->GetPrimaryAssetId() != RequestedCharacterId)
 	{
 		return;
 	}
 
-	const int32 SlotIndex = PartyCharacterIds.IndexOfByKey(LoadedDefinition->GetPrimaryAssetId());
+	const int32 SlotIndex = PartyCharacterIds.IndexOfByKey(RequestedCharacterId);
 	if (!CharacterMeshes.IsValidIndex(SlotIndex) || !CharacterMeshes[SlotIndex])
 	{
 		return;
@@ -203,11 +203,12 @@ void AAetherPartyPresentationActor::HandleCharacterDisplayLoaded(
 }
 
 void AAetherPartyPresentationActor::HandlePreviewCharacterDisplayLoaded(
-	UAetherCharacterDefinition* LoadedDefinition)
+	FPrimaryAssetId RequestedCharacterId, UAetherCharacterDefinition* LoadedDefinition)
 {
 	if (!bShowingCharacterPreview
-		|| !LoadedDefinition
-		|| LoadedDefinition->GetPrimaryAssetId() != PreviewCharacterId
+		|| RequestedCharacterId != PreviewCharacterId
+		|| !IsValid(LoadedDefinition)
+		|| LoadedDefinition->GetPrimaryAssetId() != RequestedCharacterId
 		|| !PreviewCharacterMesh)
 	{
 		return;
