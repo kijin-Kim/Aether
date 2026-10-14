@@ -1,6 +1,7 @@
 #include "AetherPartyPreviewActor.h"
 
-#include "Aether/AetherCharacterAssetSubsystem.h"
+#include "Aether/Player/AetherPlayerState.h"
+#include "Kismet/GameplayStatics.h"
 #include "Aether/AbilitySystem/AetherCharacterDefinition.h"
 #include "Components/SceneCaptureComponent2D.h"
 #include "Components/SceneComponent.h"
@@ -47,7 +48,6 @@ void AAetherPartyPreviewActor::BeginPlay()
 
 void AAetherPartyPreviewActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	PendingCharacterId = FPrimaryAssetId();
 	SceneCapture->TextureTarget = nullptr;
 	RenderTarget = nullptr;
 
@@ -56,54 +56,24 @@ void AAetherPartyPreviewActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void AAetherPartyPreviewActor::SetPreviewCharacter(FPrimaryAssetId CharacterId)
 {
-	PendingCharacterId = CharacterId;
 	PreviewMesh->SetSkeletalMesh(nullptr);
 	PreviewMesh->SetAnimInstanceClass(nullptr);
 
-	UGameInstance* GameInstance = GetGameInstance();
-	UAetherCharacterAssetSubsystem* CharacterAssetSubsystem =
-		GameInstance ? GameInstance->GetSubsystem<UAetherCharacterAssetSubsystem>() : nullptr;
-	if (!CharacterId.IsValid() || !CharacterAssetSubsystem)
+	const AAetherPlayerState* PS = Cast<AAetherPlayerState>(UGameplayStatics::GetPlayerState(this, 0));
+	UAetherCharacterDefinition* Definition = PS ? PS->GetCharacterDefinition(CharacterId) : nullptr;
+	if (!Definition || !Definition->DisplayMesh)
 	{
 		OnPreviewChanged.Broadcast(false);
 		return;
 	}
-
-	FOnCharacterDefinitionLoaded OnLoaded;
-	OnLoaded.BindDynamic(this, &AAetherPartyPreviewActor::HandleCharacterDisplayLoaded);
-	CharacterAssetSubsystem->LoadCharacterDisplay(CharacterId, MoveTemp(OnLoaded));
+	PreviewMesh->SetSkeletalMesh(Definition->DisplayMesh);
+	PreviewMesh->SetAnimInstanceClass(Definition->DisplayAnimInstanceClass);
+	SceneCapture->CaptureScene();
+	OnPreviewChanged.Broadcast(true);
 }
 
 void AAetherPartyPreviewActor::ClearPreview()
 {
-	PendingCharacterId = FPrimaryAssetId();
 	PreviewMesh->SetSkeletalMesh(nullptr);
 	PreviewMesh->SetAnimInstanceClass(nullptr);
-}
-
-void AAetherPartyPreviewActor::HandleCharacterDisplayLoaded(
-	FPrimaryAssetId RequestedCharacterId, UAetherCharacterDefinition* LoadedDefinition)
-{
-	if (RequestedCharacterId != PendingCharacterId)
-	{
-		return;
-	}
-	if (!IsValid(LoadedDefinition) || LoadedDefinition->GetPrimaryAssetId() != RequestedCharacterId)
-	{
-		OnPreviewChanged.Broadcast(false);
-		return;
-	}
-
-	USkeletalMesh* LoadedMesh = LoadedDefinition->DisplayMesh.Get();
-	UClass* LoadedAnimClass = LoadedDefinition->DisplayAnimInstanceClass.Get();
-	if (!LoadedMesh)
-	{
-		OnPreviewChanged.Broadcast(false);
-		return;
-	}
-
-	PreviewMesh->SetSkeletalMesh(LoadedMesh);
-	PreviewMesh->SetAnimInstanceClass(LoadedAnimClass);
-	SceneCapture->CaptureScene();
-	OnPreviewChanged.Broadcast(true);
 }

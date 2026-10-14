@@ -32,13 +32,6 @@ struct AETHER_API FAetherOwnedCharacterData
 
 
 
-namespace AetherAssetBundles
-{
-	inline const FName UI(TEXT("UI"));
-	inline const FName Display(TEXT("Display"));
-	inline const FName Gameplay(TEXT("Gameplay"));
-}
-
 UCLASS()
 class AETHER_API UAetherCharacterDefinition : public UPrimaryDataAsset
 {
@@ -59,15 +52,15 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Aether|Character", meta = (Categories = "Element"))
 	FGameplayTag Element;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Aether|Character", meta = (AssetBundles = "UI"))
-	TSoftObjectPtr<UTexture2D> Portrait;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Aether|Character")
+	TObjectPtr<UTexture2D> Portrait;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Aether|Mesh", meta = (AssetBundles = "Display"))
-	TSoftObjectPtr<USkeletalMesh> DisplayMesh;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Aether|Mesh")
+	TObjectPtr<USkeletalMesh> DisplayMesh;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Aether|Mesh", meta = (AssetBundles = "Display"))
-	TSoftClassPtr<UAnimInstance> DisplayAnimInstanceClass;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Aether|Mesh")
+	TSubclassOf<UAnimInstance> DisplayAnimInstanceClass;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Aether|Abilities", meta = (AssetBundles = "Gameplay"))
-	TArray<TSoftObjectPtr<UAetherAbilitySet>> AbilitySets;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Aether|Abilities")
+	TArray<TObjectPtr<UAetherAbilitySet>> AbilitySets;
 };

@@ -1,6 +1,7 @@
 #include "AetherPartyPresentationActor.h"
 
-#include "Aether/AetherCharacterAssetSubsystem.h"
+#include "Aether/Player/AetherPlayerState.h"
+#include "Kismet/GameplayStatics.h"
 #include "Aether/AbilitySystem/AetherCharacterDefinition.h"
 #include "Aether/PartySystem/AetherPartyComponent.h"
 #include "Camera/CameraComponent.h"
@@ -84,26 +85,16 @@ void AAetherPartyPresentationActor::SetPartyCharacters(const TArray<FPrimaryAsse
 		}
 	}
 
-	UGameInstance* GameInstance = GetGameInstance();
-	UAetherCharacterAssetSubsystem* CharacterAssetSubsystem =
-		GameInstance ? GameInstance->GetSubsystem<UAetherCharacterAssetSubsystem>() : nullptr;
-	if (!CharacterAssetSubsystem)
+	const AAetherPlayerState* PS = Cast<AAetherPlayerState>(UGameplayStatics::GetPlayerState(this, 0));
+	for (int32 SlotIndex = 0; PS && SlotIndex < PartyCharacterIds.Num(); ++SlotIndex)
 	{
-		return;
-	}
-
-	for (const FPrimaryAssetId& CharacterId : PartyCharacterIds)
-	{
-		if (!CharacterId.IsValid())
+		UAetherCharacterDefinition* Definition = PS->GetCharacterDefinition(PartyCharacterIds[SlotIndex]);
+		if (Definition && CharacterMeshes.IsValidIndex(SlotIndex) && CharacterMeshes[SlotIndex])
 		{
-			continue;
+			CharacterMeshes[SlotIndex]->SetSkeletalMesh(Definition->DisplayMesh);
+			CharacterMeshes[SlotIndex]->SetAnimInstanceClass(Definition->DisplayAnimInstanceClass);
 		}
-
-		FOnCharacterDefinitionLoaded OnLoaded;
-		OnLoaded.BindDynamic(this, &AAetherPartyPresentationActor::HandleCharacterDisplayLoaded);
-		CharacterAssetSubsystem->LoadCharacterDisplay(CharacterId, MoveTemp(OnLoaded));
 	}
-
 	UpdateCharacterPresentation();
 }
 
@@ -164,64 +155,13 @@ void AAetherPartyPresentationActor::ShowCharacterPreview(const FPrimaryAssetId C
 	}
 	UpdateCharacterPresentation();
 
-	UGameInstance* GameInstance = GetGameInstance();
-	UAetherCharacterAssetSubsystem* CharacterAssetSubsystem =
-		GameInstance ? GameInstance->GetSubsystem<UAetherCharacterAssetSubsystem>() : nullptr;
-	if (!CharacterAssetSubsystem)
+	const AAetherPlayerState* PS = Cast<AAetherPlayerState>(UGameplayStatics::GetPlayerState(this, 0));
+	UAetherCharacterDefinition* Definition = PS ? PS->GetCharacterDefinition(CharacterId) : nullptr;
+	if (Definition && PreviewCharacterMesh)
 	{
-		return;
+		PreviewCharacterMesh->SetSkeletalMesh(Definition->DisplayMesh);
+		PreviewCharacterMesh->SetAnimInstanceClass(Definition->DisplayAnimInstanceClass);
 	}
-
-	FOnCharacterDefinitionLoaded OnLoaded;
-	OnLoaded.BindDynamic(this, &AAetherPartyPresentationActor::HandlePreviewCharacterDisplayLoaded);
-	CharacterAssetSubsystem->LoadCharacterDisplay(CharacterId, MoveTemp(OnLoaded));
-}
-
-void AAetherPartyPresentationActor::HandleCharacterDisplayLoaded(
-	FPrimaryAssetId RequestedCharacterId, UAetherCharacterDefinition* LoadedDefinition)
-{
-	if (!IsValid(LoadedDefinition) || LoadedDefinition->GetPrimaryAssetId() != RequestedCharacterId)
-	{
-		return;
-	}
-
-	const int32 SlotIndex = PartyCharacterIds.IndexOfByKey(RequestedCharacterId);
-	if (!CharacterMeshes.IsValidIndex(SlotIndex) || !CharacterMeshes[SlotIndex])
-	{
-		return;
-	}
-
-	USkeletalMesh* LoadedMesh = LoadedDefinition->DisplayMesh.Get();
-	if (!LoadedMesh)
-	{
-		return;
-	}
-
-	CharacterMeshes[SlotIndex]->SetSkeletalMesh(LoadedMesh);
-	CharacterMeshes[SlotIndex]->SetAnimInstanceClass(LoadedDefinition->DisplayAnimInstanceClass.Get());
-	UpdateCharacterPresentation();
-}
-
-void AAetherPartyPresentationActor::HandlePreviewCharacterDisplayLoaded(
-	FPrimaryAssetId RequestedCharacterId, UAetherCharacterDefinition* LoadedDefinition)
-{
-	if (!bShowingCharacterPreview
-		|| RequestedCharacterId != PreviewCharacterId
-		|| !IsValid(LoadedDefinition)
-		|| LoadedDefinition->GetPrimaryAssetId() != RequestedCharacterId
-		|| !PreviewCharacterMesh)
-	{
-		return;
-	}
-
-	USkeletalMesh* LoadedMesh = LoadedDefinition->DisplayMesh.Get();
-	if (!LoadedMesh)
-	{
-		return;
-	}
-
-	PreviewCharacterMesh->SetSkeletalMesh(LoadedMesh);
-	PreviewCharacterMesh->SetAnimInstanceClass(LoadedDefinition->DisplayAnimInstanceClass.Get());
 	UpdateCharacterPresentation();
 }
 
@@ -237,10 +177,10 @@ void AAetherPartyPresentationActor::UpdateCharacterPresentation()
 			continue;
 		}
 
-		const bool bHasLoadedCharacter = CharacterMesh->GetSkeletalMeshAsset() != nullptr;
+		const bool bHasCharacter = CharacterMesh->GetSkeletalMeshAsset() != nullptr;
 		const bool bShouldShow =
 			!bShowingCharacterPreview
-			&& bHasLoadedCharacter
+			&& bHasCharacter
 			&& (FocusedSlotIndex == INDEX_NONE || FocusedSlotIndex == SlotIndex);
 		CharacterMesh->SetVisibility(bShouldShow);
 

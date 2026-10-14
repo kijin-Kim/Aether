@@ -78,18 +78,9 @@ void AAetherPlayerController::OnPossess(APawn* InPawn)
 	{
 		if (AAetherFieldCharacterPawn* FieldPawn = Cast<AAetherFieldCharacterPawn>(GetPawn()))
 		{
-			PS->GetPartyComponent()->AttachFieldPawn(FieldPawn);
+			PS->GetPartyComponent()->InitializeFieldPawn(FieldPawn);
 		}
 	}
-}
-
-void AAetherPlayerController::OnUnPossess()
-{
-	if (AAetherPlayerState* PS = GetPlayerState<AAetherPlayerState>())
-	{
-		PS->GetPartyComponent()->DetachFieldPawn(Cast<AAetherFieldCharacterPawn>(GetPawn()));
-	}
-	Super::OnUnPossess();
 }
 
 void AAetherPlayerController::InitializePrimaryGameLayout()

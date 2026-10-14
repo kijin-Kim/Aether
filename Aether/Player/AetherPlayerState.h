@@ -27,6 +27,9 @@ class AETHER_API UAetherInitialPlayerData : public UDataAsset
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Characters")
+	TArray<TObjectPtr<UAetherCharacterDefinition>> CharacterDefinitions;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	TArray<FAetherOwnedCharacterData> InitialRoster;
 
@@ -59,6 +62,8 @@ public:
 	UAetherPartyComponent* GetPartyComponent() const { return PartyComponent; }
 	UFUNCTION(BlueprintPure, Category = "Aether|Roster")
 	TArray<FAetherOwnedCharacterData> GetOwnedRoster() const { return OwnedRoster; }
+	UFUNCTION(BlueprintPure, Category = "Aether|Character")
+	UAetherCharacterDefinition* GetCharacterDefinition(FPrimaryAssetId CharacterId) const;
 	UFUNCTION(BlueprintCallable, Category = "Aether|Party")
 	bool RequestReplacePartyMember(int32 SlotIndex, FPrimaryAssetId NewCharacterId, UPARAM(DisplayName = "Completed") FOnAetherPartyMemberReplaceCompleted OnCompleted);
 

@@ -48,6 +48,22 @@ void AAetherPlayerState::CallOrRegisterPlayerDataInitialized(FOnAetherPlayerData
 	OnPlayerDataInitialized.AddUnique(Callback);
 }
 
+UAetherCharacterDefinition* AAetherPlayerState::GetCharacterDefinition(FPrimaryAssetId CharacterId) const
+{
+	if (!InitialPlayerData || !CharacterId.IsValid())
+	{
+		return nullptr;
+	}
+	for (UAetherCharacterDefinition* Definition : InitialPlayerData->CharacterDefinitions)
+	{
+		if (IsValid(Definition) && Definition->GetPrimaryAssetId() == CharacterId)
+		{
+			return Definition;
+		}
+	}
+	return nullptr;
+}
+
 void AAetherPlayerState::ProcessInputs()
 {
 	if (!IsValid(PartyComponent->GetFieldCharacterPawn()))

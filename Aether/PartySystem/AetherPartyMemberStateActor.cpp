@@ -25,10 +25,10 @@ bool AAetherPartyMemberStateActor::InitializeCharacterRuntime(
 
 	CharacterDefinition = Definition;
 	// OnGranted abilities may use the avatar immediately.
-	SetAvatarActor(AvatarActor);
-	for (const TSoftObjectPtr<UAetherAbilitySet>& AbilitySetPtr : CharacterDefinition->AbilitySets)
+	AetherASC->InitAbilityActorInfo(this, AvatarActor);
+	for (UAetherAbilitySet* AbilitySet : CharacterDefinition->AbilitySets)
 	{
-		if (UAetherAbilitySet* AbilitySet = AbilitySetPtr.LoadSynchronous())
+		if (AbilitySet)
 		{
 			AbilitySet->InitializeAbilitySystem(AetherASC, GrantedAbilitySetHandles, nullptr);
 		}
@@ -36,17 +36,12 @@ bool AAetherPartyMemberStateActor::InitializeCharacterRuntime(
 	return true;
 }
 
-void AAetherPartyMemberStateActor::SetAvatarActor(AActor* AvatarActor)
-{
-	AetherASC->InitAbilityActorInfo(this, AvatarActor);
-}
-
 USkeletalMesh* AAetherPartyMemberStateActor::GetSkeletalMesh() const
 {
-	return CharacterDefinition ? CharacterDefinition->DisplayMesh.LoadSynchronous() : nullptr;
+	return CharacterDefinition ? CharacterDefinition->DisplayMesh.Get() : nullptr;
 }
 
 TSubclassOf<UAnimInstance> AAetherPartyMemberStateActor::GetAnimInstanceClass() const
 {
-	return CharacterDefinition ? CharacterDefinition->DisplayAnimInstanceClass.LoadSynchronous() : nullptr;
+	return CharacterDefinition ? CharacterDefinition->DisplayAnimInstanceClass : nullptr;
 }

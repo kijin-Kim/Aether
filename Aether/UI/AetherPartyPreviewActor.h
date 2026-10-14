@@ -37,10 +37,6 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
-	UFUNCTION()
-	void HandleCharacterDisplayLoaded(FPrimaryAssetId RequestedCharacterId,
-	                                  UAetherCharacterDefinition* LoadedDefinition);
-
 	UPROPERTY(VisibleAnywhere, Category = "Aether|Party Preview")
 	TObjectPtr<USceneComponent> SceneRoot;
 
@@ -56,5 +52,4 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Aether|Party Preview", meta = (ClampMin = "256", ClampMax = "2048"))
 	int32 RenderTargetSize = 1024;
 
-	FPrimaryAssetId PendingCharacterId;
 };

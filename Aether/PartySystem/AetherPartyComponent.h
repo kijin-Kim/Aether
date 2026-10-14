@@ -28,11 +28,9 @@ public:
 
 	UAetherPartyComponent();
 	void InitializeParty(const TArray<FPrimaryAssetId>& CharacterIds);
-	void AttachFieldPawn(AAetherFieldCharacterPawn* Pawn);
-	void DetachFieldPawn(AAetherFieldCharacterPawn* Pawn);
-	UFUNCTION()
-	void HandleInitialCharacterLoaded(FPrimaryAssetId RequestedCharacterId,
-	                                  UAetherCharacterDefinition* LoadedDefinition);
+	// The shared field pawn is assigned once for the lifetime of this party.
+	void InitializeFieldPawn(AAetherFieldCharacterPawn* Pawn);
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	UPROPERTY(BlueprintAssignable, Category = "Aether|Party")
 	FOnAetherPartyChanged OnPartyChanged;
@@ -52,27 +50,20 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Aether|Party")
 	int32 GetActiveSlotIndex() const { return ActiveSlotIndex; }
 	UFUNCTION(BlueprintPure, Category = "Aether|Party")
-	// Kept for Blueprint compatibility: composition is configured, but members may still be loading.
+	// Composition can be configured before the shared pawn is ready.
 	bool IsPartyInitialized() const { return bPartyConfigured; }
 	UFUNCTION(BlueprintPure, Category = "Aether|Party")
 	bool IsCharacterInParty(FPrimaryAssetId CharacterId) const { return PartyCharacterIds.Contains(CharacterId); }
-	UFUNCTION(BlueprintPure, Category = "Aether|Party")
-	bool IsPartyMemberReplacementPending() const { return PendingReplacementSlotIndex != INDEX_NONE; }
 	UAetherAbilitySystemComponent* GetPartyAbilitySystemComponent() const;
 	UAetherAbilitySystemComponent* GetActiveAbilitySystemComponent() const;
 
 private:
+	friend class FAetherPartyInitializationTest;
 	friend class FAetherPartySwitchPreparationTest;
 
 	void TryInitializePartyRuntime();
-	void EnsurePartyAbilitiesGranted(UAetherAbilitySystemComponent* PartyASC);
 	bool SwapPartySlots(int32 SlotIndex, int32 ExistingSlotIndex);
-	bool BeginPartyMemberReplacement(int32 SlotIndex, const FPrimaryAssetId& NewCharacterId,
-	                                FOnAetherPartyMemberReplaceCompleted OnCompleted);
-	UFUNCTION()
-	void HandleReplacementCharacterLoaded(FPrimaryAssetId RequestedCharacterId,
-	                                      UAetherCharacterDefinition* LoadedDefinition);
-	void CompletePendingReplacement(bool bSucceeded);
+	bool ReplacePartyMember(int32 SlotIndex, UAetherCharacterDefinition* Definition);
 	bool ApplyPartyMemberToFieldPawn(int32 SlotIndex);
 
 	UPROPERTY(EditDefaultsOnly, Category = "Aether|Party")
@@ -88,14 +79,6 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Aether|Party", meta = (AllowPrivateAccess = "true"))
 	TArray<FPrimaryAssetId> PartyCharacterIds;
 
-	UPROPERTY()
-	TArray<TObjectPtr<UAetherCharacterDefinition>> LoadedPartyDefinitions;
-
 	bool bPartyConfigured = false;
-	bool bPartyAbilitiesGranted = false;
-
-	int32 PendingReplacementSlotIndex = INDEX_NONE;
-	FPrimaryAssetId PendingReplacementCharacterId;
-	FOnAetherPartyMemberReplaceCompleted PendingReplacementCallback;
 
 };

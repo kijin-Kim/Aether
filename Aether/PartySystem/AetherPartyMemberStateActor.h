@@ -18,10 +18,8 @@ class AETHER_API AAetherPartyMemberStateActor : public AActor
 
 public:
 	AAetherPartyMemberStateActor();
-	// Accepts a Gameplay+Display-loaded definition once; false means invalid input or repeated setup.
+	// Uses directly referenced configuration once; invalid input or repeated setup returns false.
 	bool InitializeCharacterRuntime(UAetherCharacterDefinition* Definition, AActor* AvatarActor);
-	// Updates the GAS relationship only. The caller cancels abilities before clearing the avatar.
-	void SetAvatarActor(AActor* AvatarActor);
 	UAetherAbilitySystemComponent* GetAetherAbilitySystemComponent() const { return AetherASC; }
 
 	

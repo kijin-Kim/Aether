@@ -34,14 +34,6 @@ public:
 	int32 GetFocusedPartySlot() const { return FocusedSlotIndex; }
 
 private:
-	UFUNCTION()
-	void HandleCharacterDisplayLoaded(FPrimaryAssetId RequestedCharacterId,
-	                                  UAetherCharacterDefinition* LoadedDefinition);
-
-	UFUNCTION()
-	void HandlePreviewCharacterDisplayLoaded(FPrimaryAssetId RequestedCharacterId,
-	                                         UAetherCharacterDefinition* LoadedDefinition);
-
 	void UpdateCharacterPresentation();
 
 	UPROPERTY(VisibleAnywhere, Category = "Aether|Party Presentation")
