@@ -11,6 +11,7 @@ namespace AetherGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_SwitchPartySlot3);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_SwitchPartySlot4);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_NormalAttack);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_HealingField);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_UI_PartySetup);
 	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Data_Damage);

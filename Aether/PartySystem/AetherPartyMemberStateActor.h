@@ -8,6 +8,7 @@
 #include "AetherPartyMemberStateActor.generated.h"
 
 class UAetherCharacterDefinition;
+class UAetherPartyComponent;
 class UAetherBaseAttributeSet;
 class UAetherAbilitySystemComponent;
 
@@ -19,14 +20,19 @@ class AETHER_API AAetherPartyMemberStateActor : public AActor
 public:
 	AAetherPartyMemberStateActor();
 	// Uses directly referenced configuration once; invalid input or repeated setup returns false.
-	bool InitializeCharacterRuntime(UAetherCharacterDefinition* Definition, AActor* AvatarActor);
+	bool InitializeCharacterRuntime(UAetherCharacterDefinition* Definition, AActor* AvatarActor,
+		UAetherPartyComponent* InParty = nullptr);
 	UAetherAbilitySystemComponent* GetAetherAbilitySystemComponent() const { return AetherASC; }
+	UAetherPartyComponent* GetPartyComponent() const { return Party.Get(); }
 
 	
 	USkeletalMesh* GetSkeletalMesh() const;
 	TSubclassOf<UAnimInstance> GetAnimInstanceClass() const;
 
 private:
+	// Null for a standalone (single-member NPC) runtime; never resolved through a global player.
+	UPROPERTY()
+	TWeakObjectPtr<UAetherPartyComponent> Party;
 	UPROPERTY()
 	TObjectPtr<UAetherCharacterDefinition> CharacterDefinition;
 	UPROPERTY()

@@ -2,6 +2,7 @@
 
 
 #include "AetherPartyMemberStateActor.h"
+#include "AetherPartyComponent.h"
 
 #include "Aether/AbilitySystem/AetherAbilitySystemComponent.h"
 #include "Aether/AbilitySystem/AetherCharacterDefinition.h"
@@ -16,7 +17,7 @@ AAetherPartyMemberStateActor::AAetherPartyMemberStateActor()
 }
 
 bool AAetherPartyMemberStateActor::InitializeCharacterRuntime(
-	UAetherCharacterDefinition* Definition, AActor* AvatarActor)
+	UAetherCharacterDefinition* Definition, AActor* AvatarActor, UAetherPartyComponent* InParty)
 {
 	if (CharacterDefinition || !IsValid(Definition) || !IsValid(AvatarActor))
 	{
@@ -24,6 +25,7 @@ bool AAetherPartyMemberStateActor::InitializeCharacterRuntime(
 	}
 
 	CharacterDefinition = Definition;
+	Party = InParty;
 	// OnGranted abilities may use the avatar immediately.
 	AetherASC->InitAbilityActorInfo(this, AvatarActor);
 	for (UAetherAbilitySet* AbilitySet : CharacterDefinition->AbilitySets)

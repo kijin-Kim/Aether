@@ -56,6 +56,8 @@ public:
 	bool IsCharacterInParty(FPrimaryAssetId CharacterId) const { return PartyCharacterIds.Contains(CharacterId); }
 	UAetherAbilitySystemComponent* GetPartyAbilitySystemComponent() const;
 	UAetherAbilitySystemComponent* GetActiveAbilitySystemComponent() const;
+	// Living standby members, including those already at full health.
+	TArray<UAetherAbilitySystemComponent*> GetLivingStandbyAbilitySystemComponents() const;
 
 private:
 	friend class FAetherPartyInitializationTest;

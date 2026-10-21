@@ -4,6 +4,7 @@
 #include "AetherPartyComponent.h"
 
 #include "AetherFieldCharacterPawn.h"
+#include "Aether/AbilitySystem/AttributeSet/AetherBaseAttributeSet.h"
 #include "AetherPartyMemberStateActor.h"
 #include "Aether/Aether.h"
 #include "Aether/AbilitySystem/AetherAbilitySystemComponent.h"
@@ -160,7 +161,7 @@ void UAetherPartyComponent::TryInitializePartyRuntime()
 		}
 		// Register before granting abilities, whose callbacks can reenter party initialization.
 		PartyMemberStateActors[SlotIndex] = Member;
-		if (!Member->InitializeCharacterRuntime(Definition, FieldCharacterPawn))
+		if (!Member->InitializeCharacterRuntime(Definition, FieldCharacterPawn, this))
 		{
 			PartyMemberStateActors[SlotIndex] = nullptr;
 			Member->Destroy();
@@ -282,7 +283,7 @@ bool UAetherPartyComponent::ReplacePartyMember(int32 SlotIndex, UAetherCharacter
 		return false;
 	}
 
-	if (!NewMemberActor->InitializeCharacterRuntime(Definition, FieldCharacterPawn)
+	if (!NewMemberActor->InitializeCharacterRuntime(Definition, FieldCharacterPawn, this)
 		|| !NewMemberActor->GetSkeletalMesh())
 	{
 		NewMemberActor->Destroy();
@@ -429,4 +430,19 @@ UAetherAbilitySystemComponent* UAetherPartyComponent::GetActiveAbilitySystemComp
 		return PartyMemberStateActors[ActiveSlotIndex]->GetAetherAbilitySystemComponent();
 	}
 	return nullptr;
+}
+
+TArray<UAetherAbilitySystemComponent*> UAetherPartyComponent::GetLivingStandbyAbilitySystemComponents() const
+{
+	TArray<UAetherAbilitySystemComponent*> Result;
+	for (int32 Slot = 0; Slot < PartyMemberStateActors.Num(); ++Slot)
+	{
+		const AAetherPartyMemberStateActor* Member = PartyMemberStateActors[Slot];
+		if (Slot == ActiveSlotIndex || !IsValid(Member))
+			continue;
+		UAetherAbilitySystemComponent* ASC = Member->GetAetherAbilitySystemComponent();
+		if (IsValid(ASC) && ASC->GetNumericAttribute(UAetherBaseAttributeSet::GetHealthAttribute()) > 0.f)
+			Result.Add(ASC);
+	}
+	return Result;
 }

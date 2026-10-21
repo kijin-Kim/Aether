@@ -12,6 +12,7 @@ namespace AetherGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(InputTag_SwitchPartySlot4, "InputTag.SwitchPartySlot4", "Switch Party Slot 4 Input");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(InputTag_NormalAttack, "InputTag.NormalAttack", "Normal Attack Input");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(InputTag_HealingField, "InputTag.HealingField", "Healing field input");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(InputTag_UI_PartySetup, "InputTag.UI.PartySetup", "Open Party Setup UI Input");
 
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Data_Damage, "Data.Damage", "Damage Data Tag");
