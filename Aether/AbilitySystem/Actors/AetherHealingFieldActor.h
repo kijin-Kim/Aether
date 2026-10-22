@@ -6,51 +6,57 @@
 
 class UAbilitySystemComponent;
 class UAetherPartyComponent;
+class USceneComponent;
 class UStaticMeshComponent;
 class UMaterialInterface;
 struct FOnAttributeChangeData;
 
-// Independent field lifetime and periodic healing. Includes overflow distribution; cooldown is a separate stage.
+// Owns the field lifetime, periodic healing and overflow distribution.
 UCLASS(Blueprintable)
 class AETHER_API AAetherHealingFieldActor : public AActor
 {
 	GENERATED_BODY()
+
 public:
 	AAetherHealingFieldActor();
 	void StartField(UAbilitySystemComponent* InCaster, UAetherPartyComponent* InParty, float InHealingPerTick);
 	UAbilitySystemComponent* GetCasterASC() const { return CasterASC.Get(); }
 	UAetherPartyComponent* GetSourceParty() const { return SourceParty.Get(); }
-	float GetDuration() const { return Duration; }
+	int32 GetExecutedHealingTicks() const { return ExecutedHealingTicks; }
+	int32 GetTotalHealingTicks() const { return HealingTickCount; }
 
 protected:
 	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Field")
+
+	UPROPERTY(VisibleAnywhere, Category = "Field")
+	TObjectPtr<USceneComponent> SceneRoot;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Field")
 	TObjectPtr<UStaticMeshComponent> FieldVisual;
-	UPROPERTY(EditDefaultsOnly, Category="Field", meta=(ClampMin="1"))
+	UPROPERTY(EditDefaultsOnly, Category = "Field", meta = (ClampMin = "1"))
 	float Radius = 500.f;
-	UPROPERTY(EditDefaultsOnly, Category="Field", meta=(ClampMin="0.01"))
-	float Duration = 10.f;
-	UPROPERTY(EditDefaultsOnly, Category="Field")
+	UPROPERTY(EditDefaultsOnly, Category = "Field")
 	TObjectPtr<UMaterialInterface> FieldMaterial;
 
-	UPROPERTY(EditDefaultsOnly, Category="Field", meta=(ClampMin="0"))
+	UPROPERTY(EditDefaultsOnly, Category = "Field", meta = (ClampMin = "0"))
 	float HeightTolerance = 100.f;
 
 private:
+	void ExecuteHealingTick();
+	void HealCurrentTarget();
+	void ApplyHealing(UAbilitySystemComponent* Target, float RequestedAmount);
+	void OnCasterHealthChanged(const FOnAttributeChangeData& Change);
+
+	static constexpr int32 HealingTickCount = 10;
+	static constexpr float HealingTickInterval = 1.f;
+
 	UPROPERTY()
 	TWeakObjectPtr<UAbilitySystemComponent> CasterASC;
 	UPROPERTY()
 	TWeakObjectPtr<UAetherPartyComponent> SourceParty;
 	FDelegateHandle CasterHealthChangedHandle;
-	void OnCasterHealthChanged(const FOnAttributeChangeData& Change);
-	FTimerHandle ExpirationTimer;
 	FTimerHandle HealingTimer;
 	float HealingPerTick = 0.f;
-	int32 NextHealingSlot = 0;
+	int32 ExecutedHealingTicks = 0;
 	bool bHasSourceParty = false;
-	void HealAndScheduleNext();
-	void HealCurrentTarget();
-	void ApplyHealing(UAbilitySystemComponent* Target, float RequestedAmount);
 	bool bStarted = false;
-	void Expire();
 };

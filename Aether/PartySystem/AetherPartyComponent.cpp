@@ -446,3 +446,9 @@ TArray<UAetherAbilitySystemComponent*> UAetherPartyComponent::GetLivingStandbyAb
 	}
 	return Result;
 }
+
+UAetherAbilitySystemComponent* UAetherPartyComponent::GetMemberAbilitySystemComponent(int32 SlotIndex) const
+{
+	return PartyMemberStateActors.IsValidIndex(SlotIndex) && IsValid(PartyMemberStateActors[SlotIndex])
+		? PartyMemberStateActors[SlotIndex]->GetAetherAbilitySystemComponent() : nullptr;
+}
