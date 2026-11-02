@@ -2,6 +2,7 @@
 
 
 #include "AetherFieldCharacterPawn.h"
+#include "Aether/AbilitySystem/Abilities/AetherGameplayAbility_NormalAttack.h"
 
 #include "Aether/Input/AetherInputComponent.h"
 #include "Camera/CameraComponent.h"
@@ -55,4 +56,31 @@ bool AAetherFieldCharacterPawn::ApplyCharacterAppearance(
 	GetMesh()->SetSkeletalMesh(SkeletalMesh);
 	GetMesh()->SetAnimInstanceClass(AnimInstanceClass);
 	return true;
+}
+
+uint64 AAetherFieldCharacterPawn::RegisterAttackReceiver(UAetherGameplayAbility_NormalAttack* Receiver)
+{
+	if (!IsValid(Receiver) || AttackReceiver.IsValid()) return 0;
+	AttackReceiver = Receiver;
+	return ++AttackRegistration;
+}
+
+void AAetherFieldCharacterPawn::UnregisterAttackReceiver(UAetherGameplayAbility_NormalAttack* Receiver, uint64 Registration)
+{
+	if (AttackReceiver.Get() == Receiver && AttackRegistration == Registration) AttackReceiver.Reset();
+}
+
+void AAetherFieldCharacterPawn::BeginAttackTrace(const FAetherTraceKey& Key, const FAetherMeleeTraceSettings& Settings)
+{
+	if (AttackReceiver.IsValid()) AttackReceiver->BeginTrace(AttackRegistration, Key, Settings);
+}
+
+void AAetherFieldCharacterPawn::UpdateAttackTrace(const FAetherTraceKey& Key)
+{
+	if (AttackReceiver.IsValid()) AttackReceiver->UpdateTrace(AttackRegistration, Key);
+}
+
+void AAetherFieldCharacterPawn::EndAttackTrace(const FAetherTraceKey& Key)
+{
+	if (AttackReceiver.IsValid()) AttackReceiver->EndTrace(AttackRegistration, Key);
 }

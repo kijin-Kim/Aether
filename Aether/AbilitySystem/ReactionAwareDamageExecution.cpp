@@ -337,8 +337,8 @@ void UReactionAwareDamageExecution::Execute_Implementation(const FGameplayEffect
 	ExecParams.AttemptCalculateCapturedAttributeMagnitude(Statics().CritDamageDef, EvalParams, CritDamage);
 
 
-	float AbilityDamage = 0.7008f;
-	BaseDamage = Atk * AbilityDamage;
+	// Data.Damage is the caller's base damage, before mitigation/reactions.
+	BaseDamage = FMath::Max(0.f, BaseDamage);
 
 	const FAetherElementalReactionResult ReactionResult = FAetherElementalReactionResolver::Resolve(
 		IncomingElement,

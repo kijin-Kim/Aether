@@ -1,149 +1,124 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "AetherGameplayAbility_NormalAttack.h"
-
-#include "AbilitySystemBlueprintLibrary.h"
-#include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
-#include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "Animation/AnimInstance.h"
+#include "Animation/AnimMontage.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Aether/PartySystem/AetherFieldCharacterPawn.h"
 #include "Aether/Aether.h"
-#include "Aether/AetherGameplayTags.h"
 
-void UAetherGameplayAbility_NormalAttack::OnAttackHit(FGameplayEventData Payload)
-{
-	if (Payload.TargetData.Num() == 0)
-	{
-		UE_LOG(LogAether, Verbose, TEXT("NormalAttack hit event ignored: no target data. Target=%s"), *GetNameSafe(Payload.Target));
-		return;
-	}
-
-	ApplyElementalAttackToTarget(Payload.TargetData, AetherGameplayTags::Element_Pyro, 1.0f, 1.0f);
-	UE_LOG(LogAether, Verbose, TEXT("NormalAttack hit event received. Target=%s"), *GetNameSafe(Payload.Target));
-}
-
-void UAetherGameplayAbility_NormalAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
+void UAetherGameplayAbility_NormalAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo *ActorInfo,
+                                                          const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData *TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-
-	if (!HasValidComboData())
+	AAetherFieldCharacterPawn *Pawn = ActorInfo ? Cast<AAetherFieldCharacterPawn>(ActorInfo->AvatarActor.Get()) : nullptr;
+	if (!Pawn || !Pawn->GetMesh() || !Pawn->GetMesh()->GetAnimInstance() || GroundAttackAnimations.IsEmpty() || !GroundAttackAnimations[0] ||
+	    !FMath::IsFinite(BaseDamage) || BaseDamage < 0.f || !CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
-		UE_LOG(LogAether, Warning, TEXT("NormalAttack activation failed: no valid montage data."));
 		EndAbility(Handle, ActorInfo, ActivationInfo, false, true);
 		return;
 	}
-
-	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	TracePawn = Pawn;
+	TraceRegistration = Pawn->RegisterAttackReceiver(this);
+	if (!TraceRegistration)
 	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, false, false);
+		EndAbility(Handle, ActorInfo, ActivationInfo, false, true);
 		return;
 	}
-	
-	
-	UAbilityTask_WaitGameplayEvent* AttackHit = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, AetherGameplayTags::Event_Montage_AttackHit);
-	AttackHit->EventReceived.AddDynamic(this, &UAetherGameplayAbility_NormalAttack::OnAttackHit);
-	AttackHit->ReadyForActivation();
-
-	PlayCombo();
-	
-}
-
-void UAetherGameplayAbility_NormalAttack::InputPressed(const FGameplayAbilitySpecHandle Handle,
-	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo)
-{
-	Super::InputPressed(Handle, ActorInfo, ActivationInfo);
-
-	if (bComboWindowOpened)
+	UAbilityTask_PlayMontageAndWait *Task = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, GroundAttackAnimations[0]);
+	Task->OnCompleted.AddDynamic(this, &ThisClass::OnMontageCompleted);
+	Task->OnInterrupted.AddDynamic(this, &ThisClass::OnMontageInterrupted);
+	Task->OnCancelled.AddDynamic(this, &ThisClass::OnMontageInterrupted);
+	Task->ReadyForActivation();
+	if (!IsActive())
+		return;
+	FAnimMontageInstance *Instance = Pawn->GetMesh()->GetAnimInstance()->GetActiveInstanceForMontage(GroundAttackAnimations[0]);
+	if (!Instance)
 	{
-		PlayCombo();
-	}
-	else
-	{
-		bInputBuffered = true;
-	}
-}
-
-void UAetherGameplayAbility_NormalAttack::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool, bool bWasCancelled)
-{
-	Super::EndAbility(Handle, ActorInfo, ActivationInfo, false, bWasCancelled);
-	ComboIndex = 0;
-	bComboWindowOpened = false;
-	bInputBuffered = false;
-}
-
-void UAetherGameplayAbility_NormalAttack::PlayCombo()
-{
-	if (!GroundAttackAnimations.IsValidIndex(ComboIndex) || !GroundAttackAnimations[ComboIndex])
-	{
-		UE_LOG(LogAether, Warning, TEXT("NormalAttack combo stopped: invalid montage at index %d."), ComboIndex);
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, false, true);
+		EndAbility(Handle, ActorInfo, ActivationInfo, false, true);
 		return;
 	}
+	MontageInstanceId = Instance->GetInstanceID();
+}
 
-	bComboWindowOpened = false;
-	bInputBuffered = false;
+bool UAetherGameplayAbility_NormalAttack::Accepts(uint64 Registration, const FAetherTraceKey &Key) const
+{
+	return IsActive() && TracePawn.IsValid() && TraceRegistration != 0 && TraceRegistration == Registration && MontageInstanceId != INDEX_NONE &&
+	       Key.MontageInstance == MontageInstanceId && Key.Window;
+}
 
-	UAbilityTask_PlayMontageAndWait* PlayMontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, GroundAttackAnimations[ComboIndex]);
-	if (!PlayMontageTask)
+void UAetherGameplayAbility_NormalAttack::BeginTrace(uint64 Registration, const FAetherTraceKey &Key, const FAetherMeleeTraceSettings &Settings)
+{
+	if (!Accepts(Registration, Key) || TraceSessions.Contains(Key))
+		return;
+	FAetherTraceSession Session;
+	Session.Settings = Settings;
+	if (!AetherMeleeTrace::ResolveSegment(TracePawn->GetMesh(), Settings, Session.PreviousStart, Session.PreviousEnd))
 	{
-		UE_LOG(LogAether, Warning, TEXT("NormalAttack combo stopped: failed to create montage task."));
-		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, false, true);
+		UE_LOG(LogAether, Warning, TEXT("NormalAttack: invalid trace socket/settings: %s"), *Settings.ReferenceSocket.ToString());
 		return;
 	}
-
-	PlayMontageTask->OnCompleted.AddDynamic(this, &UAetherGameplayAbility_NormalAttack::OnMontageCompleted);
-	PlayMontageTask->OnCancelled.AddDynamic(this, &UAetherGameplayAbility_NormalAttack::OnMontageCancelled);
-	PlayMontageTask->ReadyForActivation();
-
-	UAbilityTask_WaitGameplayEvent* WindowOpenedTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, AetherGameplayTags::Event_NormalAttack_ComboWindow_Opened);
-	WindowOpenedTask->EventReceived.AddDynamic(this, &UAetherGameplayAbility_NormalAttack::OnWindowOpenedEvent);
-	WindowOpenedTask->ReadyForActivation();
-
-	UAbilityTask_WaitGameplayEvent* WindowClosedTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this, AetherGameplayTags::Event_NormalAttack_ComboWindow_Closed);
-	WindowClosedTask->EventReceived.AddDynamic(this, &UAetherGameplayAbility_NormalAttack::OnWindowClosedEvent);
-	WindowClosedTask->ReadyForActivation();
-
-	ComboIndex = (ComboIndex + 1) % GroundAttackAnimations.Num();
+	TraceSessions.Add(Key, MoveTemp(Session));
+	UpdateTrace(Registration, Key);
 }
 
-bool UAetherGameplayAbility_NormalAttack::HasValidComboData() const
+void UAetherGameplayAbility_NormalAttack::UpdateTrace(uint64 Registration, const FAetherTraceKey &Key)
 {
-	if (GroundAttackAnimations.IsEmpty())
+	if (!Accepts(Registration, Key))
+		return;
+	FAetherTraceSession *Session = TraceSessions.Find(Key);
+	if (!Session)
+		return;
+	FVector Start, End;
+	if (!AetherMeleeTrace::ResolveSegment(TracePawn->GetMesh(), Session->Settings, Start, End))
 	{
-		return false;
+		TraceSessions.Remove(Key);
+		return;
 	}
-
-	for (const TObjectPtr<UAnimMontage>& Montage : GroundAttackAnimations)
+	TArray<FHitResult> Hits;
+	AetherMeleeTrace::Sweep(GetWorld(), TracePawn.Get(), Session->PreviousStart, Session->PreviousEnd, Start, End, Session->Settings.Radius,
+	                        Session->Settings.bDrawDebug, Hits);
+	Session->PreviousStart = Start;
+	Session->PreviousEnd = End;
+	for (const FHitResult &Hit : Hits)
 	{
-		if (!Montage)
-		{
-			return false;
-		}
+		// GE callbacks can end the ability; reacquire state after every application.
+		if (!Accepts(Registration, Key))
+			break;
+		Session = TraceSessions.Find(Key);
+		if (!Session)
+			break;
+		AActor *Target = Hit.GetActor();
+		if (!IsValid(Target) || Session->HitActors.Contains(Target))
+			continue;
+		Session->HitActors.Add(Target);
+		ApplyElementalAttackToTarget(UAbilitySystemBlueprintLibrary::AbilityTargetDataFromHitResult(Hit), DamageElement, BaseDamage, AuraGauge);
 	}
-
-	return true;
 }
-
+void UAetherGameplayAbility_NormalAttack::EndTrace(uint64 Registration, const FAetherTraceKey &Key)
+{
+	if (Accepts(Registration, Key))
+		TraceSessions.Remove(Key);
+}
+void UAetherGameplayAbility_NormalAttack::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo *ActorInfo,
+                                                     const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	// Invalidate before montage shutdown can emit more notifies.
+	const uint64 Registration = TraceRegistration;
+	TraceRegistration = 0;
+	MontageInstanceId = INDEX_NONE;
+	TraceSessions.Reset();
+	if (TracePawn.IsValid())
+		TracePawn->UnregisterAttackReceiver(this, Registration);
+	TracePawn.Reset();
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+}
 void UAetherGameplayAbility_NormalAttack::OnMontageCompleted()
 {
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, false, false);
+	if (IsActive())
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, false, false);
 }
-
-void UAetherGameplayAbility_NormalAttack::OnMontageCancelled()
+void UAetherGameplayAbility_NormalAttack::OnMontageInterrupted()
 {
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, false, false);
-}
-
-void UAetherGameplayAbility_NormalAttack::OnWindowOpenedEvent(FGameplayEventData Payload)
-{
-	bComboWindowOpened = true;
-	if (bInputBuffered)
-	{
-		PlayCombo();
-	}
-}
-
-void UAetherGameplayAbility_NormalAttack::OnWindowClosedEvent(FGameplayEventData Payload)
-{
-	bComboWindowOpened = false;
+	if (IsActive())
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, false, true);
 }

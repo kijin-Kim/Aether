@@ -7,6 +7,9 @@
 #include "AetherFieldCharacterPawn.generated.h"
 
 class UAetherAbilitySystemComponent;
+class UAetherGameplayAbility_NormalAttack;
+struct FAetherTraceKey;
+struct FAetherMeleeTraceSettings;
 struct FInputActionValue;
 class UCameraComponent;
 class USpringArmComponent;
@@ -21,8 +24,15 @@ public:
 	AAetherFieldCharacterPawn();
 	bool ApplyCharacterAppearance(USkeletalMesh* SkeletalMesh, TSubclassOf<UAnimInstance> AnimInstanceClass);
 	void SetFieldStreamingSourceEnabled(bool bEnabled);
+	uint64 RegisterAttackReceiver(UAetherGameplayAbility_NormalAttack* Receiver);
+	void UnregisterAttackReceiver(UAetherGameplayAbility_NormalAttack* Receiver, uint64 Registration);
+	void BeginAttackTrace(const FAetherTraceKey& Key, const FAetherMeleeTraceSettings& Settings);
+	void UpdateAttackTrace(const FAetherTraceKey& Key);
+	void EndAttackTrace(const FAetherTraceKey& Key);
 
 private:
+	TWeakObjectPtr<UAetherGameplayAbility_NormalAttack> AttackReceiver;
+	uint64 AttackRegistration = 0;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USpringArmComponent> SpringArmComponent;

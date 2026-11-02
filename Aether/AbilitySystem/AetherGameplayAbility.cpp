@@ -53,11 +53,8 @@ void UAetherGameplayAbility::ApplyElementalAttackToTarget(const FGameplayAbility
 		return;
 	}
 
-	if (!ElementTypeTag.IsValid())
-	{
-		UE_LOG(LogAether, Warning, TEXT("ApplyElementalAttackToTarget failed: ElementTypeTag is invalid."));
-		return;
-	}
+	// No element tag represents physical damage. It must not apply elemental aura.
+	if (!ElementTypeTag.IsValid()) Gauge = 0.f;
 
 	if (Damage <= 0.0f && Gauge <= 0.0f)
 	{
@@ -67,7 +64,8 @@ void UAetherGameplayAbility::ApplyElementalAttackToTarget(const FGameplayAbility
 
 	FGameplayEffectContextHandle Context = SourceASC->MakeEffectContext();
 	Context.AddSourceObject(SourceASC->GetAvatarActor());
-	Context.AddInstigator(SourceASC->GetAvatarActor(), SourceASC->GetAvatarActor());
+	// The party member owns the ASC; the shared field pawn is only its avatar.
+	Context.AddInstigator(SourceASC->GetOwnerActor(), SourceASC->GetAvatarActor());
 
 	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(UAetherGameplayEffect_ElementalDamage::StaticClass(), 1.0f, Context);
 	if (!SpecHandle.IsValid())
@@ -85,6 +83,6 @@ void UAetherGameplayAbility::ApplyElementalAttackToTarget(const FGameplayAbility
 
 	Spec->SetSetByCallerMagnitude(AetherGameplayTags::Data_Damage, Damage);
 	Spec->SetSetByCallerMagnitude(AetherGameplayTags::Data_AuraGauge, Gauge);
-	Spec->AddDynamicAssetTag(ElementTypeTag);
+	if (ElementTypeTag.IsValid()) Spec->AddDynamicAssetTag(ElementTypeTag);
 	TArray<FActiveGameplayEffectHandle> SpecHandles = ApplyGameplayEffectSpecToTarget(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), SpecHandle, TargetDataHandle);
 }
